@@ -31,7 +31,7 @@ package body Lexer_Tests is
       v_output := Lex("\a");
       Assert( Get_Class(v_output) = Lexer.Character , 
               "Lexer does not identify lexeme as a Character");
-      Assert( Get_Lexeme(v_output) = To_Unbounded_String("a"), 
+      Assert( Get_Lexeme(v_output) = To_Unbounded_String("\a"), 
               "Lexer does not save correct lexeme");
       Assert( Get_Remaining(v_output) = "", 
               "Lexer does not save correct remaining input");

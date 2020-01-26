@@ -21,7 +21,6 @@ package body Lexer is
                   v_class := Tab;
                when others => 
                   v_class := Character;
-                  v_lexeme := Unbounded_Slice(input, 2, 2);
             end case;
             
             v_output :=
