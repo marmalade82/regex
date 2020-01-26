@@ -10,22 +10,24 @@ package body Parser_Tests is
       return Format("Parser Tests");
    end Name;
    
-   procedure Test_Parse_Char(T : in out Test_Case'Class) is
+   procedure Test_Parse_Letter(T : in out Test_Case'Class) is
       v_tree : Tree := Empty_Tree;
       v_input : Vector := Empty_Vector &
-        Make_Token( Parser.Character, To_Unbounded_String("a"));
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        EOF;
       v_success : Boolean;
    begin
       v_success := Parse(v_input, v_tree);
       Assert( Count(v_tree) = 1, "AST does not have correct count" );
       Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
       null;
-   end Test_Parse_Char;
+   end Test_Parse_Letter;
    
    procedure Test_Parse_Newline(T : in out Test_Case'Class) is
       v_tree : Tree := Empty_Tree;
       v_input : Vector := Empty_Vector &
-        Make_Token( Parser.Newline, To_Unbounded_String("\n"));
+        Make_Token( Parser.Newline, To_Unbounded_String("\n")) &
+        EOF;
       v_success : Boolean;
    begin
       v_success := Parse(v_input, v_tree);
@@ -34,25 +36,63 @@ package body Parser_Tests is
       null;
    end Test_Parse_Newline;
    
-   procedure Test_Parse_Pipe(T : in out Test_Case'Class) is
+   procedure Test_Parse_Union(T : in out Test_Case'Class) is
       v_tree : Tree := Empty_Tree;
       v_input : Vector := Empty_Vector &
-        Make_Token( Parser.Pipe, To_Unbounded_String("|"));
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        Make_Token( Parser.Pipe, To_Unbounded_String("|")) &
+        Make_Token( Parser.Character, To_Unbounded_String("b")) & 
+        EOF;
       v_success : Boolean;
    begin
       v_success := Parse(v_input, v_tree);
-      Assert( Count(v_tree) = 1, "AST does not have correct count" );
-      Assert( Includes_Token(v_tree, Make_Token( Parser.Pipe, To_Unbounded_String("|"))), "AST does not have correct token");
+      Assert( Count(v_tree) = 3, "AST does not have correct count: " & Count(v_tree)'Image );
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Union, To_Unbounded_String("|"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("b"))), "AST does not have correct token");
       null;
-   end Test_Parse_Pipe;
+   end Test_Parse_Union;
+   
+   procedure Test_Parse_Concat(T: in out Test_Case'Class) is 
+      v_tree : Tree := Empty_Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        Make_Token( Parser.Character, To_Unbounded_String("b")) & 
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert( Count(v_tree) = 3, "AST does not have correct count: " & Count(v_tree)'Image );
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("b"))), "AST does not have correct token");
+      null;
+   end Test_Parse_Concat;
+   
+   procedure Test_Parse_Multiple_Concat(T: in out Test_Case'Class) is 
+      v_tree : Tree := Empty_Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        Make_Token( Parser.Character, To_Unbounded_String("b")) & 
+        Make_Token( Parser.Character, To_Unbounded_String("c")) & 
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert( Count(v_tree) = 5, "AST does not have correct count: " & Count(v_tree)'Image );
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("b"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("c"))), "AST does not have correct token");
+   end Test_Parse_Multiple_Concat;
+   
    
    procedure Register_Tests (T: in out Parser_Test) is 
       use AUnit.Test_Cases.Registration;
    begin
-      Register_Routine(T, Test_Parse_Char'Access, "Single char");
+      Register_Routine(T, Test_Parse_Letter'Access, "Single letter");
       Register_Routine(T, Test_Parse_Newline'Access, "Single newline");
-      Register_Routine(T, Test_Parse_Pipe'Access, "Single pipe");
-
+      Register_Routine(T, Test_Parse_Union'Access, "Single Union");
+      Register_Routine(T, Test_Parse_Concat'Access, "Single concatenation");
+      Register_Routine(T, Test_Parse_Multiple_Concat'Access, "Multiple concatenation");
 
    end Register_Tests;
 

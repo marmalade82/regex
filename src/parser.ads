@@ -3,7 +3,7 @@ with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Containers.Multiway_Trees;
 
 package parser is
-   type Class is ( Character, Newline, Pipe
+   type Class is ( Character, Newline, Pipe, EOF
                    
                   );
    
@@ -14,6 +14,8 @@ package parser is
    
    function Make_Token (p_class : Class; p_lexeme : Unbounded_String) return Token;
    
+   function EOF return Token;
+   
    package Token_Vector is new Ada.Containers.Vectors 
      (
       Index_Type => Natural,
@@ -23,7 +25,7 @@ package parser is
    use Token_Vector;
    
    type Abstract_Syntax_Class is 
-     ( Newline, Character, Pipe
+     ( Newline, Character, Union, Concat
      );
    
    type Abstract_Syntax_Token is record
@@ -38,6 +40,7 @@ package parser is
       );
    
    use Regex_AST;
+   
    
    function Count(p_tree: Tree) return Natural;
    
