@@ -166,7 +166,7 @@ package body parser is
    begin
       
       v_success := 
-        Parse_Standard_Character(p_input, v_new_position, v_left_operand, v_left_cursor) and then
+        Parse_Any_Char(p_input, v_new_position, v_left_operand, v_left_cursor) and then
         Parse_Union_Operator(p_input, v_new_position, v_operator, v_operator_cursor) and then
         Parse_Expression(p_input, v_new_position, v_right_operand, v_right_cursor);
       
@@ -195,13 +195,13 @@ package body parser is
       v_new_position : Natural := p_position;
    begin 
       v_success := 
-        Parse_Standard_Character(p_input, v_new_position, v_left_operand, v_left_cursor) and then
+        Parse_Any_Char(p_input, v_new_position, v_left_operand, v_left_cursor) and then
         Parse_Expression(p_input, v_new_position, v_right_operand, v_right_cursor);
       
       if v_success then 
          One_Node_Tree(v_operator, v_operator_cursor, (
                       f_class => Concat,
-                      f_lexeme => To_Unbounded_String("")
+                      f_lexeme => To_Unbounded_String("`")
                       ));
          
          Attach_Binary_Operator_Subtrees(v_operator, v_operator_cursor, v_left_cursor, v_right_cursor);
@@ -290,9 +290,15 @@ package body parser is
    
    function Get_Tree ( p_tree : Tree ) return Unbounded_String is 
       input : Unbounded_String := To_Unbounded_String("");
+      depth : Integer := -5;
       procedure Gather_Lexemes(Position : Regex_AST.Cursor) is 
          
       begin
+         if Integer(Regex_AST.Depth(Position)) > depth then 
+            depth := Integer(Regex_AST.Depth(Position));
+            input := input & ",";
+         end if;
+                             
          input := input & Element(Position).f_lexeme;
       end Gather_Lexemes;
    begin
