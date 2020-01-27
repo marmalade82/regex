@@ -11,7 +11,7 @@ package parser is
       f_class : Class;
       f_lexeme: Unbounded_String;
    end record;
-   
+     
    function Make_Token (p_class : Class; p_lexeme : Unbounded_String) return Token;
    
    function EOF return Token;
@@ -41,6 +41,7 @@ package parser is
    
    use Regex_AST;
    
+   function Get_Tree ( p_tree : Tree ) return Unbounded_String;
    
    function Count(p_tree: Tree) return Natural;
    

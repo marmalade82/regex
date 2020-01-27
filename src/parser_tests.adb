@@ -3,6 +3,8 @@ with Parser; use Parser;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 use Parser.Token_Vector;
 use Parser.Regex_AST;
+with Ada.Text_IO;
+
 
 package body Parser_Tests is
    function Name (T : Parser_Test) return Test_String is 
@@ -18,6 +20,7 @@ package body Parser_Tests is
       v_success : Boolean;
    begin
       v_success := Parse(v_input, v_tree);
+      Assert(Get_Tree(v_tree) = "a", "AST is actually: " & To_String(Get_Tree(v_tree)));
       Assert( Count(v_tree) = 1, "AST does not have correct count" );
       Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
       null;
@@ -31,6 +34,7 @@ package body Parser_Tests is
       v_success : Boolean;
    begin
       v_success := Parse(v_input, v_tree);
+      Assert(Get_Tree(v_tree) = "\n", "AST is actually: " & To_String(Get_Tree(v_tree)));
       Assert( Count(v_tree) = 1, "AST does not have correct count" );
       Assert( Includes_Token(v_tree, Make_Token( Parser.Newline, To_Unbounded_String("\n"))), "AST does not have correct token");
       null;
@@ -50,8 +54,26 @@ package body Parser_Tests is
       Assert( Includes_Token(v_tree, Make_Token( Parser.Union, To_Unbounded_String("|"))), "AST does not have correct token");
       Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
       Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("b"))), "AST does not have correct token");
-      null;
    end Test_Parse_Union;
+   
+   procedure Test_Parse_Multiple_Union(T : in out Test_Case'Class) is
+      v_tree : Tree := Empty_Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        Make_Token( Parser.Pipe, To_Unbounded_String("|")) &
+        Make_Token( Parser.Character, To_Unbounded_String("b")) & 
+        Make_Token( Parser.Pipe, To_Unbounded_String("|")) &
+        Make_Token( Parser.Character, To_Unbounded_String("c")) & 
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert( Count(v_tree) = 5, "AST does not have correct count: " & Count(v_tree)'Image );
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Union, To_Unbounded_String("|"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("b"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("c"))), "AST does not have correct token");
+   end Test_Parse_Multiple_Union;
    
    procedure Test_Parse_Concat(T: in out Test_Case'Class) is 
       v_tree : Tree := Empty_Tree;
@@ -62,6 +84,7 @@ package body Parser_Tests is
       v_success : Boolean;
    begin
       v_success := Parse(v_input, v_tree);
+      Assert(Get_Tree(v_tree) = "ab", "AST is actually: " & To_String(Get_Tree(v_tree)));
       Assert( Count(v_tree) = 3, "AST does not have correct count: " & Count(v_tree)'Image );
       Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
       Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("b"))), "AST does not have correct token");
@@ -78,6 +101,7 @@ package body Parser_Tests is
       v_success : Boolean;
    begin
       v_success := Parse(v_input, v_tree);
+      Assert(Get_Tree(v_tree) = "abc", "AST is actually: " & To_String(Get_Tree(v_tree)));
       Assert( Count(v_tree) = 5, "AST does not have correct count: " & Count(v_tree)'Image );
       Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
       Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("b"))), "AST does not have correct token");
@@ -93,6 +117,8 @@ package body Parser_Tests is
       Register_Routine(T, Test_Parse_Union'Access, "Single Union");
       Register_Routine(T, Test_Parse_Concat'Access, "Single concatenation");
       Register_Routine(T, Test_Parse_Multiple_Concat'Access, "Multiple concatenation");
+      Register_Routine(T, Test_Parse_Multiple_Union'Access, "Multiple Union");
+
 
    end Register_Tests;
 

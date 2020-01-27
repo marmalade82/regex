@@ -6,5 +6,17 @@ project Regex is
    for Object_Dir use "obj";
    for Main use ("main.adb");
 
+   package Builder is
+      for Switches ("ada") use ("-g", "-C");
+   end Builder;
+
+   package Compiler is
+      for Switches ("ada") use ("-gnat12", "-g", "-fcallgraph-info=su,da");
+   end Compiler;
+
+   package Linker is
+      for Switches ("ada") use ("-g");
+   end Linker;
+
 end Regex;
 
