@@ -4,13 +4,12 @@ This repository implements a simple lexical analyzer, parser, and code generator
 
 ## Grammar
 
+
 ```
 Program         -->         Expression EOF
 Expression      -->         ( Expression )
                 |           Concat Expression'
-Expression'     -->         ""                          // An empty production helps. It means that if all other clauses fail, 
-                                                        //      this optional production
-                                                        //      still succeeds. It does NOT mean that we match on empty input.
+Expression'     -->         ""
                 |           | Expression
 Concat          -->         ( Concat )
                 |           Unary Concat'
@@ -28,12 +27,13 @@ Range           -->         [ RExpr ]
 RExpr           -->         Character RExpr'
 RExpr'          -->         ""
                 |           - Character RExpr''
-                |           Character RExpr'''          
+                            RExpr
 RExpr''         -->         ""
-                |           RExpr                       // This is not left-recursive, since to get here from RExpr, we are forced to consume input
-RExpr'''        -->         ""
-                |           RExpr
+                |           RExpr                       // This is not left-recursive, since to get here from RExpr, we are 
+                                                        //      forced to consume input
+Character       -->         *Any terminal character that does not have special meaning in the context of the Regex Engine
 ```
+
 
 ## Appendix
 
@@ -124,4 +124,5 @@ RExpr'          -->         ""
 RExpr''         -->         ""
                 |           RExpr                       // This is not left-recursive, since to get here from RExpr, we are 
                                                         //      forced to consume input
+Character       -->         *Any terminal character that does not have special meaning in the context of the Regex Engine
 ```

@@ -3,8 +3,8 @@ with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Containers.Multiway_Trees;
 
 package parser is
-   type Class is ( Character, Newline, Pipe, EOF
-                   
+   type Class is ( Character, Newline, Pipe, EOF,
+                   Left_Bracket, Right_Bracket, Hyphen
                   );
    
    type Token is record
@@ -25,7 +25,8 @@ package parser is
    use Token_Vector;
    
    type Abstract_Syntax_Class is 
-     ( Newline, Character, Union, Concat
+     ( Newline, Character, Union, Concat, Range_Group,
+       Range_Interval, Grouping
      );
    
    type Abstract_Syntax_Token is record

@@ -148,6 +148,55 @@ package body Parser_Tests is
       Assert( Includes_Token(v_tree, Make_Token( Parser.Union, To_Unbounded_String("|"))), "AST does not have correct token");
    end Test_Parse_Mix_Union_Concat_2;
    
+   procedure Test_Parse_Range_One_Char(T: in out Test_Case'Class) is 
+      v_tree : Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parser.Left_Bracket, To_Unbounded_String("[")) &
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        Make_Token( Parser.Right_Bracket, To_Unbounded_String("]")) &
+        EOF;
+      v_success : Boolean;
+      
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert( Count(v_tree) = 2, "AST does not have correct count: " & Count(v_tree)'Image );
+      Assert(Get_Tree(v_tree) = ",[,a", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
+   end Test_Parse_Range_One_Char;
+   
+   procedure Test_Parse_Range_Multi_Char(T: in out Test_Case'Class) is 
+      v_tree : Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parser.Left_Bracket, To_Unbounded_String("[")) &
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        Make_Token( Parser.Character, To_Unbounded_String("b")) &
+        Make_Token( Parser.Right_Bracket, To_Unbounded_String("]")) &
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert( Count(v_tree) = 3, "AST does not have correct count: " & Count(v_tree)'Image );
+      Assert(Get_Tree(v_tree) = ",[,ab", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
+   end Test_Parse_Range_Multi_Char;
+   
+   procedure Test_Parse_Range_One_Interval(T: in out Test_Case'Class) is 
+      v_tree : Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parser.Left_Bracket, To_Unbounded_String("[")) &
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        Make_Token( Parser.Hyphen, To_Unbounded_String("-")) &
+        Make_Token( Parser.Character, To_Unbounded_String("b")) &
+        Make_Token( Parser.Right_Bracket, To_Unbounded_String("]")) &
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert( Count(v_tree) = 4, "AST does not have correct count: " & Count(v_tree)'Image );
+      Assert(Get_Tree(v_tree) = ",[,-,ab", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
+   end Test_Parse_Range_One_Interval;
+   
    procedure Register_Tests (T: in out Parser_Test) is 
       use AUnit.Test_Cases.Registration;
    begin
@@ -159,7 +208,9 @@ package body Parser_Tests is
       Register_Routine(T, Test_Parse_Multiple_Union'Access, "Multiple Union");
       Register_Routine(T, Test_Parse_Mix_Union_Concat_1'Access, "Union before concat");
       Register_Routine(T, Test_Parse_Mix_Union_Concat_2'Access, "Concat before union");
-
+      Register_Routine(T, Test_Parse_Range_One_Char'Access, "Range one char");
+      Register_Routine(T, Test_Parse_Range_Multi_Char'Access, "Range multiple characters");
+      Register_Routine(T, Test_Parse_Range_One_Interval'Access, "Range one interval");
 
 
    end Register_Tests;
