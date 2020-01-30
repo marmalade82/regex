@@ -134,6 +134,72 @@ package body parser is
       end if;
    end Parse_Union_Operator;
    
+   function Parse_Zero_Or_More_Operator
+     (p_input : Vector; p_position: in out Natural; 
+      p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean is
+      
+      v_element: Token;
+      v_new_token : Abstract_Syntax_Token;
+   begin 
+      v_element := Token_Vector.Element(p_input, p_position);
+      if v_element.f_class = Asterisk then 
+         v_new_token := 
+           ( f_class => Zero_Or_More,
+             f_lexeme => v_element.f_lexeme
+            );
+         One_Node_Tree(p_tree, p_cursor, v_new_token);
+         p_position := p_position + 1;      
+         
+         return True;
+      else
+         return False;
+      end if;
+   end Parse_Zero_Or_More_Operator;
+   
+   function Parse_One_Or_More_Operator
+     (p_input : Vector; p_position: in out Natural; 
+      p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean is
+      
+      v_element: Token;
+      v_new_token : Abstract_Syntax_Token;
+   begin 
+      v_element := Token_Vector.Element(p_input, p_position);
+      if v_element.f_class = Plus then 
+         v_new_token := 
+           ( f_class => One_Or_More,
+             f_lexeme => v_element.f_lexeme
+            );
+         One_Node_Tree(p_tree, p_cursor, v_new_token);
+         p_position := p_position + 1;      
+         
+         return True;
+      else
+         return False;
+      end if;
+   end Parse_One_Or_More_Operator;
+   
+   function Parse_Optional_Operator
+     (p_input : Vector; p_position: in out Natural; 
+      p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean is
+      
+      v_element: Token;
+      v_new_token : Abstract_Syntax_Token;
+   begin 
+      v_element := Token_Vector.Element(p_input, p_position);
+      if v_element.f_class = Question then 
+         v_new_token := 
+           ( f_class => Optional,
+             f_lexeme => v_element.f_lexeme
+            );
+         One_Node_Tree(p_tree, p_cursor, v_new_token);
+         p_position := p_position + 1;      
+         
+         return True;
+      else
+         return False;
+      end if;
+   end Parse_Optional_Operator;
+   
    function Parse_Interval_Operator(p_input : Vector; p_position: in out Natural; 
                                  p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean is
       v_element: Token;
@@ -182,6 +248,23 @@ package body parser is
          return False;
       end if;
    end Parse_Right_Bracket;
+   
+   function Parse_Complement_Operator
+     (p_input : Vector; p_position: in out Natural; 
+      p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean is
+      
+      v_element: Token;
+   begin
+      v_element := Token_Vector.Element(p_input, p_position);
+      
+      if v_element.f_class = Caret then 
+         Pass_Up_Parse_Results(p_position + 1, p_position, Empty_Tree, p_tree, p_cursor);       
+         
+         return True;
+      else
+         return False;
+      end if;
+   end Parse_Complement_Operator;
    
    function Parse_Standard_Character
      (p_input : Vector; p_position: in out Natural; 
@@ -338,16 +421,29 @@ package body parser is
         Parse_Range_Opt_2(p_input, v_position, v_opt_tree, v_opt_cursor);
       
       if v_success then 
-         Attach_Rightmost_Subtree(v_interval_tree, v_interval_cursor, v_char_cursor);         
+         Attach_Rightmost_Subtree(v_interval_tree, v_interval_cursor, v_char_cursor); 
+         
          if v_opt_cursor /= Regex_AST.No_Element then 
-            One_Node_Tree(v_group_tree, v_group_cursor, (
+            -- We might have gotten a grouping back here. If so, we don't make another group.
+            case Element(v_opt_cursor).f_class is 
+               when Grouping =>
+                  Attach_Leftmost_Subtree(v_opt_tree, v_opt_cursor, v_interval_cursor);
+                  Pass_Up_Parse_Results
+                    (v_position, p_position, v_opt_tree, p_tree, p_cursor
+                    );
+               when Range_Interval | Character =>
+                  One_Node_Tree(v_group_tree, v_group_cursor, (
                           f_class => Grouping,
-                          f_lexeme => To_Unbounded_String("")
+                          f_lexeme => To_Unbounded_String("g")
                          ));
-            Attach_Binary_Operator_Subtrees(v_group_tree, v_group_cursor, v_interval_cursor, v_opt_cursor);
-            Pass_Up_Parse_Results(v_position, p_position, v_group_tree, p_tree, p_cursor);
-            -- in this case, we pass up a binary tree. Left is interval, right is remainder of expression.
-            -- the group root is just a signal to the caller that multiple things got returned.
+                  Attach_Binary_Operator_Subtrees(v_group_tree, v_group_cursor, v_interval_cursor, v_opt_cursor);
+                  Pass_Up_Parse_Results(v_position, p_position, v_group_tree, p_tree, p_cursor);
+                  -- in this case, we pass up a binary tree. Left is interval, right is remainder of expression.
+                  -- the group root is just a signal to the caller that multiple things got returned.
+               when others =>
+                  raise Unexpected_Token with "Unexpected token: " & 
+                    To_String(Element(v_opt_cursor).f_lexeme);
+            end case;
          else
             Pass_Up_Parse_Results(v_position, p_position, v_interval_tree, p_tree, p_cursor);
          end if;
@@ -387,25 +483,52 @@ package body parser is
       
       if v_success then 
          
-         if v_opt_cursor /= Regex_AST.No_Element then 
-            if Element(v_opt_cursor).f_class = Grouping then 
-               -- In this case, we assume we got back an interval PLUS some other stuff.
-               Attach_Leftmost_Subtree(
-                                       v_opt_tree, First_Child(First_Child(Root(v_opt_tree))), v_char_cursor); 
-               Pass_Up_Parse_Results(v_position, p_position, v_opt_tree, p_tree, p_cursor);
-            elsif Element(v_opt_cursor).f_class = Character then 
-               One_Node_Tree(v_group_tree, v_group_cursor, (
-                             f_class => Grouping,
-                             f_lexeme => To_Unbounded_String("")
-                            ));
-               Attach_Binary_Operator_Subtrees(v_group_tree, v_group_cursor, v_char_cursor, v_opt_cursor);
-               Pass_Up_Parse_Results(v_position, p_position, v_group_tree, p_tree, p_cursor);
-            else
-               -- final case is if it is an interval. -- would like to make this more explicit.
-               -- a switch statement with an error or empty default might be useful for this.
-               Attach_Leftmost_Subtree(v_opt_tree, v_opt_cursor, v_char_cursor);
-               Pass_Up_Parse_Results(v_position, p_position, v_opt_tree, p_tree, p_cursor);   
-            end if;
+         if v_opt_cursor /= Regex_AST.No_Element then
+            case Element(v_opt_cursor).f_class is 
+               when Grouping =>
+                  case Element(First_Child(First_Child(Root(v_opt_tree)))).f_class is 
+                     when Range_Interval =>
+                        Attach_Leftmost_Subtree
+                          ( v_opt_tree, First_Child(First_Child(Root(v_opt_tree))), 
+                            v_char_cursor
+                           );
+                     when Character =>
+                        Attach_Leftmost_Subtree
+                          ( v_opt_tree, v_opt_cursor, v_char_cursor);
+                     when others =>
+                        raise Unexpected_Token with "Unexpected token: " & 
+                          To_String(Element(v_opt_cursor).f_lexeme);
+                  end case;
+                   
+                  Pass_Up_Parse_Results(v_position, p_position, v_opt_tree, p_tree, p_cursor);
+               when Character => 
+                  One_Node_Tree(v_group_tree, v_group_cursor, (
+                                f_class => Grouping,
+                                f_lexeme => To_Unbounded_String("g")
+                               ));
+                  Attach_Binary_Operator_Subtrees(v_group_tree, v_group_cursor, v_char_cursor, v_opt_cursor);
+                  Pass_Up_Parse_Results(v_position, p_position, v_group_tree, p_tree, p_cursor);
+               when Range_Interval =>
+                  if Count(v_opt_tree) >= 3 then 
+                     -- If the range interval is complete, then we need to group.
+                     One_Node_Tree(v_group_tree, v_group_cursor, (
+                                   f_class => Grouping,
+                                   f_lexeme => To_Unbounded_String("g")
+                                  ));
+                     Attach_Binary_Operator_Subtrees(v_group_tree, v_group_cursor, v_char_cursor, v_opt_cursor);
+                     Pass_Up_Parse_Results(v_position, p_position, v_group_tree, p_tree, p_cursor);
+                  else
+                     -- Attach character to left side of range interval IF 
+                     -- it's not complete
+                     Attach_Leftmost_Subtree(v_opt_tree, v_opt_cursor, v_char_cursor);
+                     Pass_Up_Parse_Results(v_position, p_position, v_opt_tree, p_tree, p_cursor);
+                  end if;
+               when others =>
+                  -- if we get anything else, it was unexpected, and we need to panic
+                  raise Unexpected_Token with "Unexpected token: " & 
+                    To_String(Element(v_opt_cursor).f_lexeme);
+            end case; 
+      
          else 
             Pass_Up_Parse_Results(v_position, p_position, v_char_tree, p_tree, p_cursor);
          end if;
@@ -443,23 +566,118 @@ package body parser is
                        f_class => Range_Group,
                        f_lexeme => To_Unbounded_String("[")
                       ));
-         if Element(v_expr_cursor).f_class = Grouping then
-            -- At this level, we can remove the grouping and attach directly to 
-            -- the RangeGroup itself.
-            Attach_All_Children(v_expr_cursor, v_range_tree, v_range_cursor);
-            Pass_Up_Parse_Results(v_position, p_position, v_range_tree, p_tree, p_cursor);
-         else 
-            -- if it's not a grouping, then for now it's just an interval, although it COULD be a char
-            Attach_Rightmost_Subtree(v_range_tree, v_range_cursor, v_expr_cursor);
-            Pass_Up_Parse_Results(v_position, p_position, v_range_tree, p_tree, p_cursor);
-         end if;
-         
+         case Element(v_expr_cursor).f_class is 
+            when Grouping =>
+               -- At this level, we can remove the grouping and attach directly to 
+               -- the RangeGroup itself.
+               Attach_All_Children(v_expr_cursor, v_range_tree, v_range_cursor);
+               Pass_Up_Parse_Results(v_position, p_position, v_range_tree, p_tree, p_cursor);
+            when Range_Interval | Character => 
+               -- If we only get one thing back, then we can just 
+               -- attach the one thing to the range group
+               Attach_Rightmost_Subtree(v_range_tree, v_range_cursor, v_expr_cursor);
+               Pass_Up_Parse_Results(v_position, p_position, v_range_tree, p_tree, p_cursor);
+            when others =>
+               raise Unexpected_Token with "Unexpected token: " & 
+                    To_String(Element(v_expr_cursor).f_lexeme);
+         end case;
+ 
          return v_success;
       end if;
       
       return v_success;
       
    end Parse_Range_Group;
+   
+   function Parse_Range_Complement
+     (p_input : Vector; p_position: in out Natural; p_tree : out Tree; 
+      p_cursor: out Regex_AST.Cursor) return Boolean is
+      
+      v_position : Natural;
+      v_success : Boolean;
+      v_expr_tree : Tree;
+      v_expr_cursor: Regex_AST.Cursor;
+      v_left_tree : Tree;
+      v_left_cursor : Regex_AST.Cursor;
+      v_right_tree : Tree;
+      v_right_cursor : Regex_AST.Cursor;
+      v_range_tree : Tree;
+      v_range_cursor: Regex_AST.Cursor;
+      v_comp_tree : Tree;
+      v_comp_cursor: Regex_AST.Cursor;
+   begin 
+      v_position := p_position;
+      v_success :=
+        Parse_Left_Bracket(p_input, v_position, v_left_tree, v_left_cursor) and then 
+        Parse_Complement_Operator(p_input, v_position, v_comp_tree, v_comp_cursor) and then
+        Parse_Range_Expr(p_input, v_position, v_expr_tree, v_expr_cursor) and then
+        Parse_Right_Bracket(p_input, v_position, v_right_tree, v_right_cursor);
+      
+      if v_success then 
+         One_Node_Tree(v_range_tree, v_range_cursor, (
+                       f_class => Range_Complement,
+                       f_lexeme => To_Unbounded_String("^")
+                      ));
+         case Element(v_expr_cursor).f_class is 
+            when Grouping =>
+               -- At this level, we can remove the grouping and attach directly to 
+               -- the RangeGroup itself.
+               Attach_All_Children(v_expr_cursor, v_range_tree, v_range_cursor);
+               Pass_Up_Parse_Results(v_position, p_position, v_range_tree, p_tree, p_cursor);
+            when Range_Interval | Character => 
+               -- If we only get one thing back, then we can just 
+               -- attach the one thing to the range group
+               Attach_Rightmost_Subtree(v_range_tree, v_range_cursor, v_expr_cursor);
+               Pass_Up_Parse_Results(v_position, p_position, v_range_tree, p_tree, p_cursor);
+            when others =>
+               raise Unexpected_Token with "Unexpected token: " & 
+                    To_String(Element(v_expr_cursor).f_lexeme);
+         end case;
+ 
+         return v_success;
+      end if;
+      
+      return v_success;
+   end Parse_Range_Complement;
+   
+   function Parse_Mark_Opt
+     (p_input : Vector; p_position: in out Natural; p_tree : out Tree; 
+      p_cursor: out Regex_AST.Cursor) return Boolean is
+      
+      v_position : Natural;
+      v_success : Boolean;
+      v_mark_tree : Tree;
+      v_mark_cursor: Regex_AST.Cursor;
+   begin
+      v_position := p_position;
+      v_success := 
+        Parse_Zero_Or_More_Operator(p_input, v_position, v_mark_tree, v_mark_cursor);
+      if v_success then 
+         Pass_Up_Parse_Results(v_position, p_position, v_mark_tree, p_tree, p_cursor);
+         return v_success;
+      end if;
+      
+      v_position := p_position;
+      v_success := 
+        Parse_One_Or_More_Operator(p_input, v_position, v_mark_tree, v_mark_cursor);
+      if v_success then 
+         Pass_Up_Parse_Results(v_position, p_position, v_mark_tree, p_tree, p_cursor);
+         return v_success;
+      end if;
+      
+      v_position := p_position;
+      v_success := 
+        Parse_Optional_Operator(p_input, v_position, v_mark_tree, v_mark_cursor);
+      if v_success then 
+         Pass_Up_Parse_Results(v_position, p_position, v_mark_tree, p_tree, p_cursor);
+         return v_success;
+      end if;
+        
+      -- if they all failed, pass up the empty tree and the old position.  
+      Pass_Up_Parse_Results(p_position, p_position, Empty_Tree, p_tree, p_cursor);
+      return True;
+      
+   end Parse_Mark_Opt;
    
    function Parse_Unary_Expr
      (p_input : Vector; p_position: in out Natural; p_tree : out Tree; 
@@ -471,13 +689,23 @@ package body parser is
       v_char_cursor: Regex_AST.Cursor;
       v_range_tree: Tree;
       v_range_cursor: Regex_AST.Cursor;
+      v_comp_tree : Tree;
+      v_comp_cursor : Regex_AST.Cursor;
+      v_mark_tree : Tree;
+      v_mark_cursor: Regex_AST.Cursor;
    begin 
       v_position := p_position;
       v_success := 
-        Parse_Char_Expr(p_input, v_position, v_char_tree, v_char_cursor);
+        Parse_Char_Expr(p_input, v_position, v_char_tree, v_char_cursor) and then 
+        Parse_Mark_Opt(p_input, v_position, v_mark_tree, v_mark_cursor);
       
       if v_success then 
-         Pass_Up_Parse_Results(v_position, p_position, v_char_tree, p_tree, p_cursor);
+         if v_mark_cursor /= Regex_AST.No_Element then
+            Attach_Rightmost_Subtree(v_mark_tree, v_mark_cursor, v_char_cursor);
+            Pass_Up_Parse_Results(v_position, p_position, v_mark_tree, p_tree, p_cursor);
+         else 
+            Pass_Up_Parse_Results(v_position, p_position, v_char_tree, p_tree, p_cursor);
+         end if;         
          return v_success;
       end if;
       
@@ -488,6 +716,13 @@ package body parser is
       if v_success then 
          Pass_Up_Parse_Results(v_position, p_position, v_range_tree, p_tree, p_cursor);
          return v_success;
+      end if;
+      
+      v_position := p_position;
+      v_success := 
+        Parse_Range_Complement(p_input, v_position, v_comp_tree, v_comp_cursor);
+      if v_success then 
+         Pass_Up_Parse_Results(v_position, p_position, v_comp_tree, p_tree, p_cursor);
       end if;
       
       return v_success;

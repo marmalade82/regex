@@ -6,32 +6,32 @@ This repository implements a simple lexical analyzer, parser, and code generator
 
 
 ```
-Program         -->         Expression EOF
-Expression      -->         ( Expression )
-                |           Concat Expression'
-Expression'     -->         ""
-                |           | Expression
-Concat          -->         ( Concat )
-                |           Unary Concat'
-Concat'         -->         ""
-                |           Concat
-Unary           -->         ( Unary )
-                |           Range
-                |           Character Mark
-Mark            -->         ""
-                |           *                           // *, ?, and + bind the tightest
-                |           ?
-                |           +
-Range           -->         [ RExpr ]
-                |           [ ^RExpr ]
-RExpr           -->         Character RExpr'
-RExpr'          -->         ""
-                |           - Character RExpr''
-                            RExpr
-RExpr''         -->         ""
-                |           RExpr                       // This is not left-recursive, since to get here from RExpr, we are 
-                                                        //      forced to consume input
-Character       -->         *Any terminal character that does not have special meaning in the context of the Regex Engine
+[X] Program         -->         Expression EOF
+[ ] Expression      -->         ( Expression )
+[X]                 |           Concat Expression'
+[X] Expression'     -->         ""
+[X]                 |           | Expression
+[ ] Concat          -->         ( Concat )
+[X]                 |           Unary Concat'
+[X] Concat'         -->         ""
+[X]                 |           Concat
+[ ] Unary           -->         ( Unary )
+[X]                 |           Range
+[X]                 |           Character Mark
+[X] Mark            -->         ""
+[X]                 |           *                           // *, ?, and + bind the tightest
+[X]                 |           ?
+[X]                 |           +
+[X] Range           -->         [ RExpr ]
+[X]                 |           [ ^RExpr ]
+[X] RExpr           -->         Character RExpr'
+[X] RExpr'          -->         ""
+[X]                 |           - Character RExpr''
+[X]                 |           RExpr
+[X] RExpr''         -->         ""
+[X]                 |           RExpr                       // This is not left-recursive, since to get here                                                             // from RExpr, we are 
+                                                            // forced to consume input
+[ ] Character       -->         *Any terminal character that does not have special meaning in the context of the Regex Engine
 ```
 
 
