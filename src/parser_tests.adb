@@ -440,6 +440,49 @@ package body Parser_Tests is
       Assert( Count(v_tree) = 12, "AST does not have correct count: " & Count(v_tree)'Image );
    end Test_Parse_Unary_Mix;
    
+   procedure Test_Parse_Match_Start(T : in out Test_Case'Class) is 
+      v_tree : Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parser.Caret, To_Unbounded_String("^")) &
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse did not succeed");
+      Assert(Get_Tree(v_tree) = ",^,a", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Count(v_tree) = 2, "AST does not have correct count: " & Count(v_tree)'Image );
+   end Test_Parse_Match_Start;
+   
+   procedure Test_Parse_Match_End(T : in out Test_Case'Class) is 
+      v_tree : Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        Make_Token( Parser.Dollar, To_Unbounded_String("$")) &
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse did not succeed");
+      Assert(Get_Tree(v_tree) = ",$,a", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Count(v_tree) = 2, "AST does not have correct count: " & Count(v_tree)'Image );
+   end Test_Parse_Match_End;
+   
+   procedure Test_Parse_Match_Start_End(T : in out Test_Case'Class) is 
+      v_tree : Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parser.Caret, To_Unbounded_String("^")) &
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        Make_Token( Parser.Dollar, To_Unbounded_String("$")) &
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse did not succeed");
+      Assert(Get_Tree(v_tree) = ",^,$,a", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Count(v_tree) = 3, "AST does not have correct count: " & Count(v_tree)'Image );
+   end Test_Parse_Match_Start_End;
+   
    procedure Register_Tests (T: in out Parser_Test) is 
       use AUnit.Test_Cases.Registration;
    begin
@@ -467,6 +510,9 @@ package body Parser_Tests is
       Register_Routine(T, Test_Parse_Nested_Concat'Access, "Single nested concatenation");
       Register_Routine(T, Test_Parse_Multiple_Nested_Union'Access, "Multiple nested Union");
       Register_Routine(T, Test_Parse_Multiple_Nested_Concat'Access, "Multiple nested concatenation");
+      Register_Routine(T, Test_Parse_Match_Start'Access, "Start of input");
+      Register_Routine(T, Test_Parse_Match_End'Access, "End of input");
+      Register_Routine(T, Test_Parse_Match_Start_End'Access, "Start and End of input");
 
 
    end Register_Tests;

@@ -201,6 +201,50 @@ package body parser is
       end if;
    end Parse_Optional_Operator;
    
+   function Parse_Start_Operator
+     (p_input : Vector; p_position: in out Natural; 
+      p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean is
+      
+      v_element: Token;
+      v_new_token : Abstract_Syntax_Token;
+   begin 
+      v_element := Token_Vector.Element(p_input, p_position);
+      if v_element.f_class = Caret then 
+         v_new_token := 
+           ( f_class => Match_Start,
+             f_lexeme => v_element.f_lexeme
+            );
+         One_Node_Tree(p_tree, p_cursor, v_new_token);
+         p_position := p_position + 1;      
+         
+         return True;
+      else
+         return False;
+      end if;
+   end Parse_Start_Operator;
+   
+   function Parse_End_Operator
+     (p_input : Vector; p_position: in out Natural; 
+      p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean is
+      
+      v_element: Token;
+      v_new_token : Abstract_Syntax_Token;
+   begin 
+      v_element := Token_Vector.Element(p_input, p_position);
+      if v_element.f_class = Dollar then 
+         v_new_token := 
+           ( f_class => Match_End,
+             f_lexeme => v_element.f_lexeme
+            );
+         One_Node_Tree(p_tree, p_cursor, v_new_token);
+         p_position := p_position + 1;      
+         
+         return True;
+      else
+         return False;
+      end if;
+   end Parse_End_Operator;
+   
    function Parse_Interval_Operator(p_input : Vector; p_position: in out Natural; 
                                  p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean is
       v_element: Token;
@@ -910,6 +954,10 @@ package body parser is
       v_success: Boolean;
       v_eof_tree: Tree;
       v_eof_cursor: Regex_AST.Cursor;
+      v_start_tree: Tree;
+      v_start_cursor: Regex_AST.Cursor;
+      v_end_tree : Tree;
+      v_end_cursor: Regex_AST.Cursor;
    begin
                                      
       v_position := p_position;
@@ -918,7 +966,48 @@ package body parser is
         Parse_EOF(p_input, v_position, v_eof_tree, v_eof_cursor);
       if v_success then
          Pass_Up_Parse_Results(v_position, p_position, v_tree, p_tree, p_cursor);
+         return v_success;
       end if;
+      
+      v_position := p_position;
+      v_success :=
+        Parse_Start_Operator(p_input, v_position, v_start_tree, v_start_cursor) and then 
+        Parse_Expr(p_input, v_position, v_tree, v_cursor) and then
+        Parse_EOF(p_input, v_position, v_eof_tree, v_eof_cursor);
+      
+      if v_success then
+         Attach_Rightmost_Subtree(v_start_tree, v_start_cursor, v_cursor);
+         Pass_Up_Parse_Results(v_position, p_position, v_start_tree, p_tree, p_cursor);
+         return v_success;
+      end if;
+      
+      v_position := p_position;
+      v_success :=
+        Parse_Expr(p_input, v_position, v_tree, v_cursor) and then
+        Parse_End_Operator(p_input, v_position, v_end_tree, v_end_cursor) and then 
+        Parse_EOF(p_input, v_position, v_eof_tree, v_eof_cursor);
+      
+      if v_success then
+         Attach_Rightmost_Subtree(v_end_tree, v_end_cursor, v_cursor);
+         Pass_Up_Parse_Results(v_position, p_position, v_end_tree, p_tree, p_cursor);
+         return v_success;
+      end if;
+      
+      v_position := p_position;
+      v_success :=
+        Parse_Start_Operator(p_input, v_position, v_start_tree, v_start_cursor) and then 
+        Parse_Expr(p_input, v_position, v_tree, v_cursor) and then
+        Parse_End_Operator(p_input, v_position, v_end_tree, v_end_cursor) and then 
+        Parse_EOF(p_input, v_position, v_eof_tree, v_eof_cursor);
+      
+      if v_success then
+         Attach_Rightmost_Subtree(v_end_tree, v_end_cursor, v_cursor);
+         Attach_Rightmost_Subtree(v_start_tree, v_start_cursor, v_end_cursor);
+         Pass_Up_Parse_Results(v_position, p_position, v_start_tree, p_tree, p_cursor);
+         return v_success;
+      end if;
+         
+         
       
       return v_success;
       

@@ -7,16 +7,17 @@ This repository implements a simple lexical analyzer, parser, and code generator
 
 ```
 [X] Program         -->         Expression EOF
-[ ]                 |           ^ Expression EOF
-[ ]                 |           Expression $ EOF
-[ ]                 |           ^ Expression $ EOF
+[X]                 |           ^ Expression EOF
+[X]                 |           Expression $ EOF
+[X]                 |           ^ Expression $ EOF
 [X] Expression      -->         Concat Expression'
 [X] Expression'     -->         ""
 [X]                 |           | Expression
-[X] Concat          -->         Unary Concat'
+[X] Concat          -->         Operand Concat'
 [X] Concat'         -->         ""
 [X]                 |           Concat
-[X] Unary           -->         ( Expression )              // Unary is anything that could be an operand on
+[X] Operand         -->         ( Expression )              // Operand is anything that could 
+                                                            // be an operand on
                                                             // the immediate left of an operator.
 [X]                 |           Range
 [X]                 |           Character Mark
@@ -34,7 +35,8 @@ This repository implements a simple lexical analyzer, parser, and code generator
 [X]                 |           RExpr                       // This is not left-recursive, since to get here
                                                             // from RExpr, we are 
                                                             // forced to consume input
-[ ] Character       -->         *Any terminal character that does not have special meaning in the context of the Regex Engine
+[ ] Character       -->         *Any terminal character that does not have 
+                                special meaning in the context of the Regex Engine
 ```
 
 

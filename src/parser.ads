@@ -8,7 +8,7 @@ package parser is
    type Class is ( Character, Newline, Pipe, EOF,
                    Left_Bracket, Right_Bracket, Hyphen,
                    Caret, Asterisk, Plus, Question,
-                   Left_Paren, Right_Paren
+                   Left_Paren, Right_Paren, Dollar
                   );
    
    type Token is record
@@ -31,7 +31,8 @@ package parser is
    type Abstract_Syntax_Class is 
      ( Newline, Character, Union, Concat, Range_Group,
        Range_Interval, Grouping, Range_Complement,
-       Zero_Or_More, One_Or_More, Optional
+       Zero_Or_More, One_Or_More, Optional, Match_Start,
+       Match_End
      );
    
    type Abstract_Syntax_Token is record
