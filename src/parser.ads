@@ -1,52 +1,9 @@
-with Ada.Containers.Vectors;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
-with Ada.Containers.Multiway_Trees;
+
+with Parse_Types; use Parse_Types; use Parse_Types.Token_Vector;
+use Parse_Types.Regex_AST;
 
 package parser is
-   Unexpected_Token : exception;
-   
-   type Class is ( Character, Newline, Pipe, EOF,
-                   Left_Bracket, Right_Bracket, Hyphen,
-                   Caret, Asterisk, Plus, Question,
-                   Left_Paren, Right_Paren, Dollar
-                  );
-   
-   type Token is record
-      f_class : Class;
-      f_lexeme: Unbounded_String;
-   end record;
-     
-   function Make_Token (p_class : Class; p_lexeme : Unbounded_String) return Token;
-   
-   function EOF return Token;
-   
-   package Token_Vector is new Ada.Containers.Vectors 
-     (
-      Index_Type => Natural,
-      Element_Type => Token
-     );
-   
-   use Token_Vector;
-   
-   type Abstract_Syntax_Class is 
-     ( Newline, Character, Union, Concat, Range_Group,
-       Range_Interval, Grouping, Range_Complement,
-       Zero_Or_More, One_Or_More, Optional, Match_Start,
-       Match_End
-     );
-   
-   type Abstract_Syntax_Token is record
-      f_class : Abstract_Syntax_Class;
-      f_lexeme: Unbounded_String;
-   end record;
-   
-   function Make_Token (p_class : Abstract_Syntax_Class; p_lexeme : Unbounded_String) return Abstract_Syntax_Token;
-    
-   package Regex_AST is new Ada.Containers.Multiway_Trees
-     ( Element_Type => Abstract_Syntax_Token
-      );
-   
-   use Regex_AST;
    
    function Get_Tree ( p_tree : Tree ) return Unbounded_String;
    
