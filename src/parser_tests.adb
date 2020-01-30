@@ -26,6 +26,24 @@ package body Parser_Tests is
       null;
    end Test_Parse_Letter;
    
+   procedure Test_Parse_Nested_Letter(T : in out Test_Case'Class) is
+      v_tree : Tree := Empty_Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parser.Left_Paren, To_Unbounded_String("(")) &
+        Make_Token( Parser.Left_Paren, To_Unbounded_String("(")) &
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        Make_Token( Parser.Right_Paren, To_Unbounded_String(")")) &
+        Make_Token( Parser.Right_Paren, To_Unbounded_String(")")) &
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(Get_Tree(v_tree) = ",a", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Count(v_tree) = 1, "AST does not have correct count" );
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
+      null;
+   end Test_Parse_Nested_Letter;
+   
    procedure Test_Parse_Newline(T : in out Test_Case'Class) is
       v_tree : Tree := Empty_Tree;
       v_input : Vector := Empty_Vector &
@@ -56,6 +74,26 @@ package body Parser_Tests is
       Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("b"))), "AST does not have correct token");
    end Test_Parse_Union;
    
+   procedure Test_Parse_Nested_Union(T : in out Test_Case'Class) is
+      v_tree : Tree := Empty_Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parser.Left_Paren, To_Unbounded_String("(")) &
+        Make_Token( Parser.Left_Paren, To_Unbounded_String("(")) &
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        Make_Token( Parser.Pipe, To_Unbounded_String("|")) &
+        Make_Token( Parser.Character, To_Unbounded_String("b")) & 
+        Make_Token( Parser.Right_Paren, To_Unbounded_String(")")) &
+        Make_Token( Parser.Right_Paren, To_Unbounded_String(")")) &
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert( Count(v_tree) = 3, "AST does not have correct count: " & Count(v_tree)'Image );
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Union, To_Unbounded_String("|"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("b"))), "AST does not have correct token");
+   end Test_Parse_Nested_Union;
+   
    procedure Test_Parse_Multiple_Union(T : in out Test_Case'Class) is
       v_tree : Tree := Empty_Tree;
       v_input : Vector := Empty_Vector &
@@ -75,6 +113,28 @@ package body Parser_Tests is
       Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("c"))), "AST does not have correct token");
    end Test_Parse_Multiple_Union;
    
+   procedure Test_Parse_Multiple_Nested_Union(T : in out Test_Case'Class) is
+      v_tree : Tree := Empty_Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parser.Left_Paren, To_Unbounded_String("(")) &
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        Make_Token( Parser.Pipe, To_Unbounded_String("|")) &
+        Make_Token( Parser.Character, To_Unbounded_String("b")) & 
+        Make_Token( Parser.Right_Paren, To_Unbounded_String(")")) &
+        Make_Token( Parser.Pipe, To_Unbounded_String("|")) &
+        Make_Token( Parser.Character, To_Unbounded_String("c")) & 
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(Get_Tree(v_tree) = ",|,|,ab!c", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Count(v_tree) = 5, "AST does not have correct count: " & Count(v_tree)'Image );
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Union, To_Unbounded_String("|"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("b"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("c"))), "AST does not have correct token");
+   end Test_Parse_Multiple_Nested_Union;
+   
    procedure Test_Parse_Concat(T: in out Test_Case'Class) is 
       v_tree : Tree := Empty_Tree;
       v_input : Vector := Empty_Vector &
@@ -90,6 +150,26 @@ package body Parser_Tests is
       Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("b"))), "AST does not have correct token");
       null;
    end Test_Parse_Concat;
+   
+   procedure Test_Parse_Nested_Concat(T: in out Test_Case'Class) is 
+      v_tree : Tree := Empty_Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parser.Left_Paren, To_Unbounded_String("(")) &
+        Make_Token( Parser.Left_Paren, To_Unbounded_String("(")) &
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        Make_Token( Parser.Character, To_Unbounded_String("b")) &
+        Make_Token( Parser.Right_Paren, To_Unbounded_String(")")) &
+        Make_Token( Parser.Right_Paren, To_Unbounded_String(")")) &
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(Get_Tree(v_tree) = ",`,ab", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Count(v_tree) = 3, "AST does not have correct count: " & Count(v_tree)'Image );
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("b"))), "AST does not have correct token");
+      null;
+   end Test_Parse_Nested_Concat;
    
    procedure Test_Parse_Multiple_Concat(T: in out Test_Case'Class) is 
       v_tree : Tree := Empty_Tree;
@@ -107,6 +187,25 @@ package body Parser_Tests is
       Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("b"))), "AST does not have correct token");
       Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("c"))), "AST does not have correct token");
    end Test_Parse_Multiple_Concat;
+   
+   procedure Test_Parse_Multiple_Nested_Concat(T: in out Test_Case'Class) is 
+      v_tree : Tree := Empty_Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parser.Left_Paren, To_Unbounded_String("(")) &
+        Make_Token( Parser.Character, To_Unbounded_String("a")) &
+        Make_Token( Parser.Character, To_Unbounded_String("b")) & 
+        Make_Token( Parser.Right_Paren, To_Unbounded_String(")")) &
+        Make_Token( Parser.Character, To_Unbounded_String("c")) & 
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(Get_Tree(v_tree) = ",`,`,ab!c", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Count(v_tree) = 5, "AST does not have correct count: " & Count(v_tree)'Image );
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("a"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("b"))), "AST does not have correct token");
+      Assert( Includes_Token(v_tree, Make_Token( Parser.Character, To_Unbounded_String("c"))), "AST does not have correct token");
+   end Test_Parse_Multiple_Nested_Concat;
    
    procedure Test_Parse_Mix_Union_Concat_1(T : in out Test_Case'Class) is 
       v_tree : Tree;
@@ -363,7 +462,11 @@ package body Parser_Tests is
       Register_Routine(T, Test_Parse_Plus'Access, "Single plus");
       Register_Routine(T, Test_Parse_Question'Access, "Single question");
       Register_Routine(T, Test_Parse_Unary_Mix'Access, "Mix of unary expressions");
-
+      Register_Routine(T, Test_Parse_Nested_Letter'Access, "Single nested_letter");
+      Register_Routine(T, Test_Parse_Nested_Union'Access, "Single nested Union");
+      Register_Routine(T, Test_Parse_Nested_Concat'Access, "Single nested concatenation");
+      Register_Routine(T, Test_Parse_Multiple_Nested_Union'Access, "Multiple nested Union");
+      Register_Routine(T, Test_Parse_Multiple_Nested_Concat'Access, "Multiple nested concatenation");
 
 
    end Register_Tests;

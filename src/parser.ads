@@ -7,7 +7,8 @@ package parser is
    
    type Class is ( Character, Newline, Pipe, EOF,
                    Left_Bracket, Right_Bracket, Hyphen,
-                   Caret, Asterisk, Plus, Question
+                   Caret, Asterisk, Plus, Question,
+                   Left_Paren, Right_Paren
                   );
    
    type Token is record

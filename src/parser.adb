@@ -1,7 +1,8 @@
 with Ada.Text_IO; use Ada.Text_IO;
 
 package body parser is
-   
+   function Parse_Expr(p_input : Vector; p_position: in out Natural; 
+                       p_tree : out Tree; p_cursor: out Regex_AST.Cursor) return Boolean;
    
    
    procedure Pass_Up_Parse_Results
@@ -248,6 +249,34 @@ package body parser is
          return False;
       end if;
    end Parse_Right_Bracket;
+   
+   function Parse_Left_Paren(p_input : Vector; p_position: in out Natural; 
+                               p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean is
+      v_element: Token;
+   begin
+      v_element := Token_Vector.Element(p_input, p_position);
+      if v_element.f_class = Left_Paren then 
+         Pass_Up_Parse_Results(p_position + 1, p_position, Empty_Tree, p_tree, p_cursor);        
+         
+         return True;
+      else
+         return False;
+      end if;
+   end Parse_Left_Paren;
+   
+   function Parse_Right_Paren(p_input : Vector; p_position: in out Natural; 
+                               p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean is
+      v_element: Token;
+   begin
+      v_element := Token_Vector.Element(p_input, p_position);
+      if v_element.f_class = Right_Paren then 
+         Pass_Up_Parse_Results(p_position + 1, p_position, Empty_Tree, p_tree, p_cursor);        
+         
+         return True;
+      else
+         return False;
+      end if;
+   end Parse_Right_Paren;
    
    function Parse_Complement_Operator
      (p_input : Vector; p_position: in out Natural; 
@@ -693,6 +722,12 @@ package body parser is
       v_comp_cursor : Regex_AST.Cursor;
       v_mark_tree : Tree;
       v_mark_cursor: Regex_AST.Cursor;
+      v_left_tree: Tree;
+      v_left_cursor: Regex_AST.Cursor;
+      v_right_tree: Tree;
+      v_right_cursor: Regex_AST.Cursor;
+      v_expr_tree: Tree;
+      v_expr_cursor: Regex_AST.Cursor;
    begin 
       v_position := p_position;
       v_success := 
@@ -723,6 +758,18 @@ package body parser is
         Parse_Range_Complement(p_input, v_position, v_comp_tree, v_comp_cursor);
       if v_success then 
          Pass_Up_Parse_Results(v_position, p_position, v_comp_tree, p_tree, p_cursor);
+         return v_success;
+      end if;
+      
+      v_position := p_position;
+      v_success :=
+        Parse_Left_Paren(p_input, v_position, v_left_tree, v_left_cursor) and then 
+        Parse_Expr(p_input, v_position, v_expr_tree, v_expr_cursor) and then
+        Parse_Right_Paren(p_input, v_position, v_right_tree, v_right_cursor);
+      
+      if v_success then 
+         Pass_Up_Parse_Results(v_position, p_position, v_expr_tree, p_tree, p_cursor);
+         return v_success;
       end if;
       
       return v_success;
@@ -792,8 +839,7 @@ package body parser is
    end Parse_Concat_Expr;
    
    
-   function Parse_Expr(p_input : Vector; p_position: in out Natural; 
-                       p_tree : out Tree; p_cursor: out Regex_AST.Cursor) return Boolean;
+   
 
    function Parse_Expr_Opt
      (p_input : Vector; p_position: in out Natural; p_tree : out Tree; 
@@ -831,19 +877,25 @@ package body parser is
       v_expr_cursor: Regex_AST.Cursor;
       v_operator_tree : Tree;
       v_operator_cursor: Regex_AST.Cursor;
+      v_left_tree : Tree;
+      v_left_cursor: Regex_AST.Cursor;
+      v_right_tree : Tree;
+      v_right_cursor: Regex_AST.Cursor;
+      v_opt_tree : Tree;
+      v_opt_cursor : Regex_AST.Cursor;
    begin 
       v_position := p_position;
       v_success := 
         Parse_Concat_Expr(p_input, v_position, v_concat_tree, v_concat_cursor) and then 
-        Parse_Expr_Opt(p_input, v_position, v_expr_tree, v_expr_cursor);
+        Parse_Expr_Opt(p_input, v_position, v_opt_tree, v_opt_cursor);
       if v_success then 
-         if not (v_expr_cursor = Regex_AST.No_Element) then 
-            Attach_Leftmost_Subtree(v_expr_tree, v_expr_cursor, v_concat_cursor);
-            Pass_Up_Parse_Results(v_position, p_position, v_expr_tree, p_tree, p_cursor);
+         if not (v_opt_cursor = Regex_AST.No_Element) then 
+            Attach_Leftmost_Subtree(v_opt_tree, v_opt_cursor, v_concat_cursor);
+            Pass_Up_Parse_Results(v_position, p_position, v_opt_tree, p_tree, p_cursor);
          else 
             Pass_Up_Parse_Results(v_position, p_position, v_concat_tree, p_tree, p_cursor);
          end if;
-         
+         return v_success;
       end if;
       
       return v_success;

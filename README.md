@@ -7,29 +7,32 @@ This repository implements a simple lexical analyzer, parser, and code generator
 
 ```
 [X] Program         -->         Expression EOF
-[ ] Expression      -->         ( Expression )
-[X]                 |           Concat Expression'
+[ ]                 |           ^ Expression EOF
+[ ]                 |           Expression $ EOF
+[ ]                 |           ^ Expression $ EOF
+[X] Expression      -->         Concat Expression'
 [X] Expression'     -->         ""
 [X]                 |           | Expression
-[ ] Concat          -->         ( Concat )
-[X]                 |           Unary Concat'
+[X] Concat          -->         Unary Concat'
 [X] Concat'         -->         ""
 [X]                 |           Concat
-[ ] Unary           -->         ( Unary )
+[X] Unary           -->         ( Expression )              // Unary is anything that could be an operand on
+                                                            // the immediate left of an operator.
 [X]                 |           Range
 [X]                 |           Character Mark
 [X] Mark            -->         ""
 [X]                 |           *                           // *, ?, and + bind the tightest
 [X]                 |           ?
 [X]                 |           +
-[X] Range           -->         [ RExpr ]
+[X] Range           -->         [  RExpr ]
 [X]                 |           [ ^RExpr ]
 [X] RExpr           -->         Character RExpr'
 [X] RExpr'          -->         ""
 [X]                 |           - Character RExpr''
 [X]                 |           RExpr
 [X] RExpr''         -->         ""
-[X]                 |           RExpr                       // This is not left-recursive, since to get here                                                             // from RExpr, we are 
+[X]                 |           RExpr                       // This is not left-recursive, since to get here
+                                                            // from RExpr, we are 
                                                             // forced to consume input
 [ ] Character       -->         *Any terminal character that does not have special meaning in the context of the Regex Engine
 ```
