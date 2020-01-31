@@ -9,7 +9,8 @@ package Parse_Types is
    type Class is ( Character, Newline, Pipe, EOF,
                    Left_Bracket, Right_Bracket, Hyphen,
                    Caret, Asterisk, Plus, Question,
-                   Left_Paren, Right_Paren, Dollar
+                   Left_Paren, Right_Paren, Dollar,
+                   Tab, Carriage_Return
                   );
    
    type Token is record
@@ -27,7 +28,7 @@ package Parse_Types is
      ( Newline, Character, Union, Concat, Range_Group,
        Range_Interval, Grouping, Range_Complement,
        Zero_Or_More, One_Or_More, Optional, Match_Start,
-       Match_End
+       Match_End, Tab, Carriage_Return
      );
    
    type Abstract_Syntax_Token is record

@@ -229,5 +229,23 @@ package body Parse_Terminals is
       
    end Parse_Newline;
    
+   function Parse_Tab(p_input : Vector; p_position: in out Natural; 
+                      p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean is 
+      v_success : Boolean;
+   begin
+      v_success := Match_Token_And_Build_Tree(Tab, Token_Vector.Element(p_input, p_position),
+                                              Tab, p_tree, p_cursor, p_position);
+      return v_success;
+   end Parse_Tab;
+   
+   function Parse_Return(p_input : Vector; p_position: in out Natural; 
+                         p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean is 
+      v_success : Boolean;
+   begin
+      v_success := Match_Token_And_Build_Tree(Carriage_Return, Token_Vector.Element(p_input, p_position),
+                                              Carriage_Return, p_tree, p_cursor, p_position);
+      return v_success;
+   end Parse_Return;
+   
 
 end Parse_Terminals;

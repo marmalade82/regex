@@ -59,6 +59,35 @@ package body Parser_Tests is
       null;
    end Test_Parse_Newline;
    
+   procedure Test_Parse_Tab(T : in out Test_Case'Class) is
+      v_tree : Tree := Empty_Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parse_Types.Tab, To_Unbounded_String("\t")) &
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(Get_Tree(v_tree) = ",\t", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Count(v_tree) = 1, "AST does not have correct count" );
+      Assert( Includes_Token(v_tree, Make_Token( Parse_Types.Tab, To_Unbounded_String("\t"))), "AST does not have correct token");
+      null;
+   end Test_Parse_Tab;
+   
+   procedure Test_Parse_Return(T : in out Test_Case'Class) is
+      v_tree : Tree := Empty_Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parse_Types.Carriage_Return, To_Unbounded_String("\r")) &
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(Get_Tree(v_tree) = ",\r", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Count(v_tree) = 1, "AST does not have correct count" );
+      Assert( Includes_Token(v_tree, Make_Token( Parse_Types.Carriage_Return, 
+              To_Unbounded_String("\r"))), "AST does not have correct token");
+      null;
+   end Test_Parse_Return;
+   
    procedure Test_Parse_Union(T : in out Test_Case'Class) is
       v_tree : Tree := Empty_Tree;
       v_input : Vector := Empty_Vector &
@@ -489,6 +518,8 @@ package body Parser_Tests is
    begin
       Register_Routine(T, Test_Parse_Letter'Access, "Single letter");
       Register_Routine(T, Test_Parse_Newline'Access, "Single newline");
+      Register_Routine(T, Test_Parse_Tab'Access, "Single tab");
+      Register_Routine(T, Test_Parse_Return'Access, "Single carriage return");
       Register_Routine(T, Test_Parse_Union'Access, "Single Union");
       Register_Routine(T, Test_Parse_Concat'Access, "Single concatenation");
       Register_Routine(T, Test_Parse_Multiple_Concat'Access, "Multiple concatenation");

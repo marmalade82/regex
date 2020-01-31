@@ -86,8 +86,22 @@ package body parser is
          return v_success;
       end if;
       
+      v_new_position := p_position;
+      v_success := Parse_Tab(p_input, v_new_position, v_tree, v_cursor);
+      if v_success then 
+         Pass_Up_Parse_Results(v_new_position, p_position, v_tree, p_tree, p_cursor);
+         return v_success;
+      end if;
       
-      return False;
+      v_new_position := p_position;
+      v_success := Parse_Return(p_input, v_new_position, v_tree, v_cursor);
+      if v_success then 
+         Pass_Up_Parse_Results(v_new_position, p_position, v_tree, p_tree, p_cursor);
+         return v_success;
+      end if;
+      
+      
+      return v_success;
    end Parse_Any_Char;
    
    function Parse_EOF

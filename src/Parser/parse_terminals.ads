@@ -57,6 +57,12 @@ package Parse_Terminals is
    function Parse_Newline(p_input : Vector; p_position: in out Natural; 
                           p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean;
    
+   function Parse_Tab(p_input : Vector; p_position: in out Natural; 
+                      p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean;
+   
+   function Parse_Return(p_input : Vector; p_position: in out Natural; 
+                         p_tree : out Tree; p_cursor : out Regex_AST.Cursor) return Boolean;
+   
    procedure Pass_Up_Parse_Results
      (Source_Position: Natural; Target_Position: out Natural;
       Source_Tree: Tree; Target_Tree: out Tree; Target_Cursor : out Regex_AST.Cursor);
