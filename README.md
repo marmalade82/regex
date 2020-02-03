@@ -2,7 +2,17 @@
 
 This repository implements a simple lexical analyzer, parser, and code generator for a simplified Regular Expression language.
 
-## Grammar
+# Lexical Analyzer
+
+## Parsers
+
+There are two parsers planned for this compiler. The first will use a simple recursive descent parsing algorithm, while the second will use some bottom-up parsing algorithm. The following are the planned features for both parsers:
+
+- [ ] Complete parsing of the grammar given below (see following subsection).
+- [ ] Perform error recovery and continue parsing where possible.
+- [ ] Parse common syntax errors and provide friendly error messages.
+
+### Grammar
 
 
 ```
@@ -35,7 +45,7 @@ This repository implements a simple lexical analyzer, parser, and code generator
 [X]                 |           RExpr                       // This is not left-recursive, since to get here
                                                             // from RExpr, we are 
                                                             // forced to consume input
-[ ] Character       -->         *Any terminal character that does not have 
+[X] Character       -->         *Any terminal character that does not have 
                                 special meaning in the context of the Regex Engine
 ```
 
