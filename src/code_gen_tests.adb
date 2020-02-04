@@ -13,7 +13,7 @@ package body Code_Gen_Tests is
       return Format("Code Gen Tests");
    end Name;
    
-   procedure Test_Parse_Char(T : in out Test_Case'Class) is 
+   procedure Test_Gen_Char(T : in out Test_Case'Class) is 
       v_machine: NFA;
       v_input: Vector := Empty_Vector &
         Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
@@ -24,13 +24,14 @@ package body Code_Gen_Tests is
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_NFA(v_tree);
-      Assert(Count_State(v_machine) = 3, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
-   end Test_Parse_Char;
+      Assert(Count_State(v_machine) = 2, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
+   end Test_Gen_Char;
    
    procedure Register_Tests(T: in out Code_Gen_Test) is 
       use AUnit.Test_Cases.Registration;
    begin
-      Register_Routine(T, Test_Parse_Char'Access, "Test that the NFA processes a single char");
+      Register_Routine(T, Test_Gen_Char'Access, "Test that the NFA processes a single char");
    end Register_Tests;
 
 end Code_Gen_Tests;
