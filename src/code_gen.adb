@@ -56,6 +56,8 @@ package body Code_Gen is
             v_further_states := Get_Epsilon_Closure(v_new_states, state_table);
             
             Union(v_new_states, v_further_states);
+         else 
+            Union(v_new_states, v_states);
          end if;       
       end Get_Epsilon_States;
    begin
@@ -118,11 +120,13 @@ package body Code_Gen is
       transition : Transitions; -- need a vector of transitions, one for each state we're in.
       current_states : Set;
       new_states: Set;
+      initial_states: Set;
    begin 
       -- for every character in the input,
       -- check the current state to get the transition functions, and 
       -- check what the next state is.
-      current_states := Get_Epsilon_Closure(To_Set(machine.start), machine.states);
+      initial_states := To_Set(machine.start);
+      current_states := Get_Epsilon_Closure(initial_states, machine.states);
       for I in 1..Length(input) loop
          c := Element(input, I);
          
