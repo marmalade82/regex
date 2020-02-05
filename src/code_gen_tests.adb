@@ -26,12 +26,31 @@ package body Code_Gen_Tests is
       v_machine := Gen_NFA(v_tree);
       Assert(Count_State(v_machine) = 2, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("b")), "Fails to reject unintended string");
    end Test_Gen_Char;
+   
+   procedure Test_Gen_Concat(T: in out Test_Case'Class) is 
+      v_machine: NFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("b")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin 
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_NFA(v_tree);
+      Assert(Count_State(v_machine) = 4, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Recognize(v_machine, To_Unbounded_String("ab")), "Does not recognize the intended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("ba")), "Fails to reject unintended string");
+   end Test_Gen_Concat;
    
    procedure Register_Tests(T: in out Code_Gen_Test) is 
       use AUnit.Test_Cases.Registration;
    begin
-      Register_Routine(T, Test_Gen_Char'Access, "Test that the NFA processes a single char");
+      Register_Routine(T, Test_Gen_Char'Access, "Processes a single char");
+      Register_Routine(T, Test_Gen_Concat'Access, "Processes a single concatenation");
    end Register_Tests;
 
 end Code_Gen_Tests;
