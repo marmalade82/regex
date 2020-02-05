@@ -218,8 +218,47 @@ package body Code_Gen is
       else
          raise Invalid_Subtree with "Concat subtree did not have two subtrees";
       end if;
-      
    end Gen_Concat;
+   
+   function Gen_Union(tok : Abstract_Syntax_Token; p_cursor: Regex_AST.Cursor) return NFA is 
+      v_map : Map;
+      v_first_child : Regex_AST.Cursor;
+      v_second_child : Regex_AST.Cursor;
+      v_first_nfa: NFA;
+      v_second_nfa: NFA;
+      v_first_nfa_new_start: Natural;
+      v_second_nfa_new_start : Natural;
+      v_new_start_transitions : Transitions;
+      v_new_start_epsilon_transitions : Set := Empty_Set;
+   begin
+      -- Need to grab NFAs made from first two children and then combine them into one NFA.
+      v_first_child := First_Child(p_cursor);
+      v_second_child := Next_Sibling(v_first_child);
+      
+      if v_first_child /= Regex_AST.No_Element and then v_second_child /= Regex_AST.No_Element then 
+         v_first_nfa := Gen_NFA(v_first_child);
+         v_second_nfa := Gen_NFA(v_second_child);
+         
+         -- at this point, we add a new start state 0 that has epsilon transitions to 
+         -- the start states of the two child NFAs.
+         v_first_nfa_new_start := 1;
+         v_second_nfa_new_start := 1 + Natural(Length(v_first_nfa.states));
+         Insert(v_new_start_epsilon_transitions, v_first_nfa_new_start);
+         Insert(v_new_start_epsilon_transitions, v_second_nfa_new_start);
+         v_new_start_transitions :=
+         ( input_transitions => Empty_Map, -- there are no input transitions
+           epsilon_transitions => v_new_start_epsilon_transitions
+          );
+         
+         return (
+                 start => 0, -- we start at start of first nfa
+                 states => Join(To_Vector(v_new_start_transitions, 1), Join(v_first_nfa.states, v_second_nfa.states)),
+                 accepting => Union(v_first_nfa.accepting, v_second_nfa.accepting)
+                 );
+      else
+         raise Invalid_Subtree with "Union subtree did not have two subtrees";
+      end if;
+   end Gen_Union;
 
    function Gen_NFA(p_cursor: Regex_AST.Cursor) return NFA is 
       v_token : Abstract_Syntax_Token;
@@ -231,6 +270,8 @@ package body Code_Gen is
             return Gen_Character(v_token, p_cursor);
          when Parse_Types.Concat =>
             return Gen_Concat(v_token, p_cursor);
+         when Parse_Types.Union =>
+            return Gen_Union(v_token, p_cursor);
          when others => 
             return (
                     start => 0,
