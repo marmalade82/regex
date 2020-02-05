@@ -53,6 +53,8 @@ package Code_Gen is
    
    function Count_State(machine: NFA) return Natural;
    
+   function Count_Epsilon_Transitions(machine: NFA) return Natural;
+   
    function Recognize(machine: NFA; input: Unbounded_String) return Boolean;
    
    

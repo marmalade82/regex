@@ -207,12 +207,13 @@ package body Parser_Tests is
         Make_Token( Parse_Types.Character, To_Unbounded_String("a")) &
         Make_Token( Parse_Types.Character, To_Unbounded_String("b")) & 
         Make_Token( Parse_Types.Character, To_Unbounded_String("c")) & 
+        Make_Token( Parse_Types.Character, To_Unbounded_String("d")) & 
         EOF;
       v_success : Boolean;
    begin
       v_success := Parse(v_input, v_tree);
-      Assert(Get_Tree(v_tree) = ",`,a`,bc", "AST is actually: " & To_String(Get_Tree(v_tree)));
-      Assert( Count(v_tree) = 5, "AST does not have correct count: " & Count(v_tree)'Image );
+      Assert(Get_Tree(v_tree) = ",`,a`,b`,cd", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Count(v_tree) = 7, "AST does not have correct count: " & Count(v_tree)'Image );
       Assert( Includes_Token(v_tree, Make_Token( Parse_Types.Character, To_Unbounded_String("a"))), "AST does not have correct token");
       Assert( Includes_Token(v_tree, Make_Token( Parse_Types.Character, To_Unbounded_String("b"))), "AST does not have correct token");
       Assert( Includes_Token(v_tree, Make_Token( Parse_Types.Character, To_Unbounded_String("c"))), "AST does not have correct token");

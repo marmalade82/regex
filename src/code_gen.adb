@@ -2,6 +2,8 @@ with Ada.Containers.Vectors;
 with Ada.Containers.Hashed_Maps;
 with Ada.Strings.Hash;
 with Parser;
+with Ada.Text_IO; use Ada.Text_IO;
+
 
 package body Code_Gen is
    function Gen_NFA(p_cursor: Regex_AST.Cursor) return NFA;
@@ -17,6 +19,17 @@ package body Code_Gen is
       Append(v_vector, second);
       return v_vector;
    end Join;
+   
+   function As_String(states: Set) return String is 
+      str : Unbounded_String := To_Unbounded_String("");
+      procedure Accumulate(Position : State_Set.Cursor) is 
+      begin
+         str := str & Element(Position)'Image;
+      end Accumulate;
+   begin
+      Iterate(states, Accumulate'Access);
+      return To_String(str);
+   end As_String;
    
    function Empty_Transitions return Transitions is 
       
@@ -129,12 +142,17 @@ package body Code_Gen is
       current_states := Get_Epsilon_Closure(initial_states, machine.states);
       for I in 1..Length(input) loop
          c := Element(input, I);
+         Put_Line("read character " & c);
          
          -- for each state in the current states, get the new states and append to the new states.
+         Put_Line("current states are " & As_String(current_states));
+         new_states := Empty_Set;
          new_states := Get_New_States(current_states, machine.states, c);
+         Put_Line("new states are " & As_String(new_states));
          
          -- if the new_states are empty, we could not transition on the input at all
          if Is_Empty(new_states) then 
+            Put_Line("Failed because could not find more new states with current state set as " & As_String(current_states));
             return False;
          else 
             current_states := Copy(new_states);
@@ -147,7 +165,57 @@ package body Code_Gen is
       return not Is_Empty(Intersection(machine.accepting, current_states));
    end Recognize;
    
-   function Update_States_To_Transition_To(state_table: Vector; states: Set; new_state: Natural) return Vector is 
+   function Increment_By(The_Set : Set; The_Increment: Positive) return Set is 
+      A_Set : Set := Empty_Set;
+      procedure Do_Increment(Position: State_Set.Cursor) is 
+         A_State : Natural;
+      begin
+         A_State := Element(Position);
+         Insert(A_Set, A_State + Natural(The_Increment)); 
+      end Do_Increment;
+   begin
+      Iterate(The_Set, Do_Increment'Access);
+      return A_Set;
+   end Increment_By;
+   
+   function Increment_All_Input_Transitions_By(transitions: Input_To_State.Map; increment: Positive) return Input_To_State.Map is 
+      new_map: Map := Empty_Map;
+      procedure Do_Increment(Position: Input_To_State.Cursor) is 
+         v_states : Set;
+      begin
+         v_states := Increment_By(Element(Position), increment);
+         Insert(new_map, Key(Position), v_states);
+      end Do_Increment;
+   begin 
+      Iterate(transitions, Do_Increment'Access);
+      return new_map;   
+   end Increment_All_Input_Transitions_By;
+   
+   function Increment_All_Epsilon_Transitions_By(transitions: State_Set.Set; increment: Positive) return State_Set.Set is 
+      new_states : Set := Empty_Set;
+   begin
+      new_states := Increment_By(transitions, increment);
+      return new_states;
+   end Increment_All_Epsilon_Transitions_By;
+   
+   function Increment_All_Transitions_By(state_table: Vector; increment: Positive) return Vector is 
+      new_table: Vector := Empty_Vector;
+      procedure Do_Increment(Position: State_To_Input_Map.Cursor) is 
+         v_transition: Transitions;
+         v_new_transition: Transitions;
+      begin
+         v_transition := Element(Position);
+         v_new_transition := ( input_transitions => Increment_All_Input_Transitions_By(v_transition.input_transitions, increment),
+                               epsilon_transitions => Increment_All_Epsilon_Transitions_By(v_transition.epsilon_transitions, increment)
+                              );
+         Append(new_table, v_new_transition);
+      end Do_Increment;
+   begin 
+      Iterate(state_table, Do_Increment'Access);
+      return new_table;
+   end Increment_All_Transitions_By;
+   
+   function Update_States_To_Epsilon_Transition_To(state_table: Vector; states: Set; new_state: Natural) return Vector is 
       v_new_state_table : Vector := Empty_Vector;
       procedure Update_Epsilon_Transition(Position: State_Set.Cursor) is 
          v_state : Natural;
@@ -166,7 +234,7 @@ package body Code_Gen is
       v_new_state_table := Copy(state_table);
       Iterate(states, Update_Epsilon_Transition'Access);
       return v_new_state_table;
-   end Update_States_To_Transition_To;
+   end Update_States_To_Epsilon_Transition_To;
 
    function Gen_Character(tok : Abstract_Syntax_Token; p_cursor: Regex_AST.Cursor) return NFA is 
       v_map : Map;
@@ -207,13 +275,13 @@ package body Code_Gen is
          -- at this point, the first nfa's accepting state transitions need to be modified to 
          -- have an epsilon transition to the starting state of the second nfa.
          v_second_nfa_new_start := Natural(Length(v_first_nfa.states));
-         v_updated_first_nfa_states := Update_States_To_Transition_To
+         v_updated_first_nfa_states := Update_States_To_Epsilon_Transition_To
            (v_first_nfa.states, v_first_nfa.accepting, v_second_nfa_new_start);
          
          return (
                  start => 0, -- we start at start of first nfa
-                 states => Join(v_updated_first_nfa_states, v_second_nfa.states),
-                 accepting => Copy(v_second_nfa.accepting)
+                 states => Join(v_updated_first_nfa_states, Increment_All_Transitions_By(v_second_nfa.states, v_second_nfa_new_start)),
+                 accepting => Increment_By(v_second_nfa.accepting, v_second_nfa_new_start)
                  );
       else
          raise Invalid_Subtree with "Concat subtree did not have two subtrees";
@@ -252,8 +320,15 @@ package body Code_Gen is
          
          return (
                  start => 0, -- we start at start of first nfa
-                 states => Join(To_Vector(v_new_start_transitions, 1), Join(v_first_nfa.states, v_second_nfa.states)),
-                 accepting => Union(v_first_nfa.accepting, v_second_nfa.accepting)
+                 states => Join(To_Vector(v_new_start_transitions, 1), 
+                   Join(
+                     Increment_All_Transitions_By(v_first_nfa.states, v_first_nfa_new_start), 
+                     Increment_All_Transitions_By(v_second_nfa.states, v_second_nfa_new_start)
+                    )),
+                 accepting => Union(
+                   Increment_By(v_first_nfa.accepting, v_first_nfa_new_start),
+                   Increment_By(v_second_nfa.accepting, v_second_nfa_new_start)
+                    )
                  );
       else
          raise Invalid_Subtree with "Union subtree did not have two subtrees";
@@ -273,11 +348,7 @@ package body Code_Gen is
          when Parse_Types.Union =>
             return Gen_Union(v_token, p_cursor);
          when others => 
-            return (
-                    start => 0,
-                    states => Empty_Vector, 
-                    accepting => Empty_Set
-                   );
+            raise Invalid_Subtree with "Unknown token";
       end case;
    end Gen_NFA;
    
@@ -299,10 +370,20 @@ package body Code_Gen is
    end;
    
    function Count_State(machine: NFA) return Natural is 
-      
    begin 
       return Natural(Length(machine.states));
    end Count_State;
+   
+   function Count_Epsilon_Transitions(machine: NFA) return Natural is 
+      v_count : Natural := 0;
+      procedure Accumulate ( Position: State_To_Input_Map.Cursor) is 
+      begin
+         v_count := v_count + Natural(Length(Element(Position).epsilon_transitions));
+      end Accumulate;
+   begin
+      Iterate(machine.states, Accumulate'Access);
+      return v_count;
+   end Count_Epsilon_Transitions;
 
 
    
