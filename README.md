@@ -26,10 +26,10 @@ There are two parsers planned for this compiler. The first will use a simple rec
 [X] Concat          -->         Operand Concat'
 [X] Concat'         -->         ""
 [X]                 |           Concat
-[X] Operand         -->         ( Expression )              // Operand is anything that could 
+[X] Operand         -->         ( Expression ) Mark             // Operand is anything that could 
                                                             // be an operand on
                                                             // the immediate left of an operator.
-[X]                 |           Range
+[X]                 |           Range Mark
 [X]                 |           Character Mark
 [X] Mark            -->         ""
 [X]                 |           *                           // *, ?, and + bind the tightest

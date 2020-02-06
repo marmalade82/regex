@@ -488,18 +488,30 @@ package body parser is
       
       v_position := p_position;
       v_success :=
-        Parse_Range_Group(p_input, v_position, v_range_tree, v_range_cursor);
+        Parse_Range_Group(p_input, v_position, v_range_tree, v_range_cursor) and then 
+        Parse_Mark_Opt(p_input, v_position, v_mark_tree, v_mark_cursor);
       
       if v_success then 
-         Pass_Up_Parse_Results(v_position, p_position, v_range_tree, p_tree, p_cursor);
+         if v_mark_cursor /= Regex_AST.No_Element then
+            Attach_Rightmost_Subtree(v_mark_tree, v_mark_cursor, v_range_cursor);
+            Pass_Up_Parse_Results(v_position, p_position, v_mark_tree, p_tree, p_cursor);
+         else 
+            Pass_Up_Parse_Results(v_position, p_position, v_range_tree, p_tree, p_cursor);            
+         end if;
          return v_success;
       end if;
       
       v_position := p_position;
       v_success := 
-        Parse_Range_Complement(p_input, v_position, v_comp_tree, v_comp_cursor);
+        Parse_Range_Complement(p_input, v_position, v_comp_tree, v_comp_cursor) and then
+        Parse_Mark_Opt(p_input, v_position, v_mark_tree, v_mark_cursor);
       if v_success then 
-         Pass_Up_Parse_Results(v_position, p_position, v_comp_tree, p_tree, p_cursor);
+         if v_mark_cursor /= Regex_AST.No_Element then
+            Attach_Rightmost_Subtree(v_mark_tree, v_mark_cursor, v_comp_cursor);
+            Pass_Up_Parse_Results(v_position, p_position, v_mark_tree, p_tree, p_cursor);
+         else 
+            Pass_Up_Parse_Results(v_position, p_position, v_comp_tree, p_tree, p_cursor);            
+         end if;
          return v_success;
       end if;
       
@@ -507,10 +519,16 @@ package body parser is
       v_success :=
         Parse_Left_Paren(p_input, v_position, v_left_tree, v_left_cursor) and then 
         Parse_Expr(p_input, v_position, v_expr_tree, v_expr_cursor) and then
-        Parse_Right_Paren(p_input, v_position, v_right_tree, v_right_cursor);
+        Parse_Right_Paren(p_input, v_position, v_right_tree, v_right_cursor) and then 
+        Parse_Mark_Opt(p_input, v_position, v_mark_tree, v_mark_cursor);
       
       if v_success then 
-         Pass_Up_Parse_Results(v_position, p_position, v_expr_tree, p_tree, p_cursor);
+         if v_mark_cursor /= Regex_AST.No_Element then
+            Attach_Rightmost_Subtree(v_mark_tree, v_mark_cursor, v_expr_cursor);
+            Pass_Up_Parse_Results(v_position, p_position, v_mark_tree, p_tree, p_cursor);
+         else 
+            Pass_Up_Parse_Results(v_position, p_position, v_expr_tree, p_tree, p_cursor);            
+         end if;
          return v_success;
       end if;
       

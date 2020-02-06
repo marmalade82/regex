@@ -471,6 +471,58 @@ package body Parser_Tests is
       Assert( Count(v_tree) = 12, "AST does not have correct count: " & Count(v_tree)'Image );
    end Test_Parse_Unary_Mix;
    
+   procedure Test_Parse_Nested_Unary(T : in out Test_Case'Class) is 
+      v_tree : Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parse_Types.Left_Paren, To_Unbounded_String("(")) &
+        Make_Token( Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token( Parse_Types.Character, To_Unbounded_String("b")) &
+        Make_Token( Parse_Types.Right_Paren, To_Unbounded_String(")")) &
+        Make_Token( Parse_Types.Asterisk, To_Unbounded_String("*")) &
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse did not succeed");
+      Assert(Get_Tree(v_tree) = ",*,`,ab", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Count(v_tree) = 4, "AST does not have correct count: " & Count(v_tree)'Image );
+   end Test_Parse_Nested_Unary;
+   
+   procedure Test_Parse_Nested_Unary_2(T : in out Test_Case'Class) is 
+      v_tree : Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parse_Types.Left_Bracket, To_Unbounded_String("[")) &
+        Make_Token( Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token( Parse_Types.Character, To_Unbounded_String("b")) &
+        Make_Token( Parse_Types.Right_Bracket, To_Unbounded_String("]")) &
+        Make_Token( Parse_Types.Asterisk, To_Unbounded_String("+")) &
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse did not succeed");
+      Assert(Get_Tree(v_tree) = ",+,[,ab", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Count(v_tree) = 4, "AST does not have correct count: " & Count(v_tree)'Image );
+   end Test_Parse_Nested_Unary_2;
+   
+   procedure Test_Parse_Nested_Unary_3(T : in out Test_Case'Class) is 
+      v_tree : Tree;
+      v_input : Vector := Empty_Vector &
+        Make_Token( Parse_Types.Left_Bracket, To_Unbounded_String("[")) &
+        Make_Token( Parse_Types.Caret, To_Unbounded_String("^")) &
+        Make_Token( Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token( Parse_Types.Character, To_Unbounded_String("b")) &
+        Make_Token( Parse_Types.Right_Bracket, To_Unbounded_String("]")) &
+        Make_Token( Parse_Types.Asterisk, To_Unbounded_String("+")) &
+        EOF;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse did not succeed");
+      Assert(Get_Tree(v_tree) = ",+,^,ab", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Count(v_tree) = 4, "AST does not have correct count: " & Count(v_tree)'Image );
+   end Test_Parse_Nested_Unary_3;
+   
    procedure Test_Parse_Match_Start(T : in out Test_Case'Class) is 
       v_tree : Tree;
       v_input : Vector := Empty_Vector &
@@ -546,6 +598,10 @@ package body Parser_Tests is
       Register_Routine(T, Test_Parse_Match_Start'Access, "Start of input");
       Register_Routine(T, Test_Parse_Match_End'Access, "End of input");
       Register_Routine(T, Test_Parse_Match_Start_End'Access, "Start and End of input");
+      Register_Routine(T, Test_Parse_Nested_Unary'Access, "Unary operator on nested expression");
+      Register_Routine(T, Test_Parse_Nested_Unary_2'Access, "Unary operator on range");	
+      Register_Routine(T, Test_Parse_Nested_Unary_3'Access, "Unary operator on range complement");	
+      
 
 
    end Register_Tests;
