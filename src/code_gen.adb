@@ -35,7 +35,10 @@ package body Code_Gen is
       
    begin
       return ( input_transitions => Empty_Map,
-               epsilon_transitions => Empty_Set
+               epsilon_transitions => Empty_Set,
+               kind => By_Char,
+               range_inputs => Char_Set.Empty_Set,
+               range_states => State_Set.Empty_Set
               );
    end Empty_Transitions; 
      
@@ -83,10 +86,21 @@ package body Code_Gen is
    function Get_New_States_On_Input(trans: Transitions; states: Vector; c: Character) return Set is 
       v_states : Set := Empty_Set;
    begin 
-      -- First get direct input transitions
-      if Find(trans.input_transitions, c) /= Input_To_State.No_Element then 
-         Union(v_states, Element(trans.input_transitions, c));
-      end if;
+      -- First get direct input transitions where possible
+      case trans.kind is 
+         when By_Char =>
+            if Find(trans.input_transitions, c) /= Input_To_State.No_Element then 
+               Union(v_states, Element(trans.input_transitions, c));
+            end if;
+         when By_Range => 
+            if Char_Set.Contains(trans.range_inputs, c) then 
+               Union(v_states, trans.range_states);
+            end if;
+         when By_Range_Complement =>
+            if not Char_Set.Contains(trans.range_inputs, c) then 
+               Union(v_states, trans.range_states);
+            end if;
+      end case;
       
       -- Then get epsilon closure of these new states.
       v_states := Get_Epsilon_Closure(v_states, states);
@@ -130,7 +144,6 @@ package body Code_Gen is
    
    function Recognize(machine: NFA; input: Unbounded_String) return Boolean is 
       c : Character;
-      transition : Transitions; -- need a vector of transitions, one for each state we're in.
       current_states : Set;
       new_states: Set;
       initial_states: Set;
@@ -206,7 +219,10 @@ package body Code_Gen is
       begin
          v_transition := Element(Position);
          v_new_transition := ( input_transitions => Increment_All_Input_Transitions_By(v_transition.input_transitions, increment),
-                               epsilon_transitions => Increment_All_Epsilon_Transitions_By(v_transition.epsilon_transitions, increment)
+                               epsilon_transitions => Increment_All_Epsilon_Transitions_By(v_transition.epsilon_transitions, increment),
+                               kind => v_transition.kind,
+                               range_inputs => Char_Set.Copy(v_transition.range_inputs),
+                               range_states => Increment_By(v_transition.range_states, increment)
                               );
          Append(new_table, v_new_transition);
       end Do_Increment;
@@ -221,12 +237,17 @@ package body Code_Gen is
          v_state : Natural;
          v_transitions : Transitions;
          v_set : Set := Empty_Set;
+         v_old_transitions : Transitions;
       begin 
          v_state := Element(Position);
-         v_set := Copy(Element(v_new_state_table, v_state).epsilon_transitions);
+         v_old_transitions := Element(v_new_state_table, v_state);
+         v_set := Copy(v_old_transitions.epsilon_transitions);
          Insert(v_set, new_state);
-         v_transitions := ( input_transitions => Copy(Element(v_new_state_table, v_state).input_transitions),
-                            epsilon_transitions => v_set
+         v_transitions := ( input_transitions => Copy(v_old_transitions.input_transitions),
+                            epsilon_transitions => v_set,
+                            kind => v_old_transitions.kind,
+                            range_inputs => Char_Set.Copy(v_old_transitions.range_inputs),
+                            range_states => State_Set.Copy(v_old_transitions.range_states)
                            );
          Replace_Element(v_new_state_table, v_state, v_transitions);
       end Update_Epsilon_Transition;
@@ -244,7 +265,10 @@ package body Code_Gen is
       -- for this nfa, a single character is enough.
       Insert(v_map, Element(tok.f_lexeme, Length(tok.f_lexeme)), To_Set(1));
       v_transitions := ( input_transitions => v_map,
-                         epsilon_transitions => Empty_Set                        
+                         epsilon_transitions => Empty_Set,
+                         kind => By_Char,
+                         range_inputs => Char_Set.Empty_Set,
+                         range_states => State_Set.Empty_Set
                         );
       return (
               start => 0,
@@ -315,7 +339,10 @@ package body Code_Gen is
          Insert(v_new_start_epsilon_transitions, v_second_nfa_new_start);
          v_new_start_transitions :=
          ( input_transitions => Empty_Map, -- there are no input transitions
-           epsilon_transitions => v_new_start_epsilon_transitions
+           epsilon_transitions => v_new_start_epsilon_transitions,
+           kind => By_Char,
+           range_inputs => Char_Set.Empty_Set,
+           range_states => State_SEt.Empty_Set
           );
          
          return (
@@ -334,6 +361,78 @@ package body Code_Gen is
          raise Invalid_Subtree with "Union subtree did not have two subtrees";
       end if;
    end Gen_Union;
+   
+   -- This expects that the group subtree has been flattened as much as possible
+   function Gen_Range_Group(The_Token : Abstract_Syntax_Token; The_Parent: Regex_AST.Cursor) return NFA is 
+      A_Transition : Transitions;
+      Some_Range_Inputs : Char_Set.Set;
+      procedure Build_Range(The_Position : Regex_AST.Cursor) is 
+         An_Input : Character;
+         A_Token : Abstract_Syntax_Token;
+      begin
+         A_Token := Element(The_Position);
+         case A_Token.f_class is 
+            when Parse_Types.Character =>
+               An_Input := Element(A_Token.f_lexeme, Length(A_Token.f_lexeme));
+               Char_Set.Insert(Some_Range_Inputs, An_Input);
+            when others => 
+               raise Unknown_AST_Token with "Token that a range cannot handle";
+         end case;	
+         
+      end Build_Range;
+   begin 
+      Iterate_Children(The_Parent, Build_Range'Access);
+      
+      A_Transition := ( input_transitions => Empty_Map,
+                        epsilon_transitions => Empty_Set,
+                        range_inputs => Some_Range_Inputs,
+                        range_states => To_Set(1),
+                        kind => By_Range
+                       );
+      
+      return ( start => 0,
+               states => Empty_Vector &
+                 A_Transition & 
+                 Empty_Transitions,
+               accepting => To_Set(1)
+              );
+   end Gen_Range_Group;
+   
+   -- This expects that the group subtree has been flattened as much as possible
+   function Gen_Range_Complement(The_Token : Abstract_Syntax_Token; The_Parent: Regex_AST.Cursor) return NFA is 
+      A_Transition : Transitions;
+      Some_Range_Inputs : Char_Set.Set;
+      procedure Build_Range(The_Position : Regex_AST.Cursor) is 
+         An_Input : Character;
+         A_Token : Abstract_Syntax_Token;
+      begin
+         A_Token := Element(The_Position);
+         case A_Token.f_class is 
+            when Parse_Types.Character =>
+               An_Input := Element(A_Token.f_lexeme, Length(A_Token.f_lexeme));
+               Char_Set.Insert(Some_Range_Inputs, An_Input);
+            when others => 
+               raise Unknown_AST_Token with "Token that a range cannot handle";
+         end case;	
+         
+      end Build_Range;
+   begin 
+      Iterate_Children(The_Parent, Build_Range'Access);
+      
+      A_Transition := ( input_transitions => Empty_Map,
+                        epsilon_transitions => Empty_Set,
+                        range_inputs => Some_Range_Inputs,
+                        range_states => To_Set(1),
+                        kind => By_Range_Complement
+                       );
+      
+      return ( start => 0,
+               states => Empty_Vector &
+                 A_Transition & 
+                 Empty_Transitions,
+               accepting => To_Set(1)
+              );
+   end Gen_Range_Complement;
 
    function Gen_NFA(p_cursor: Regex_AST.Cursor) return NFA is 
       v_token : Abstract_Syntax_Token;
@@ -347,8 +446,12 @@ package body Code_Gen is
             return Gen_Concat(v_token, p_cursor);
          when Parse_Types.Union =>
             return Gen_Union(v_token, p_cursor);
+         when Parse_Types.Range_Group => 
+            return Gen_Range_Group(v_token, p_cursor);
+         when Parse_Types.Range_Complement =>
+            return Gen_Range_Complement(v_token, p_cursor);
          when others => 
-            raise Invalid_Subtree with "Unknown token";
+            raise Unknown_AST_Token with "Unknown token while generating NFA";
       end case;
    end Gen_NFA;
    

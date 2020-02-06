@@ -9,6 +9,15 @@ with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 package Code_Gen is
    
    Invalid_Subtree: exception;
+   Unknown_AST_Token: exception;
+   
+   function Charac_Hash(Key: Character) return Ada.Containers.Hash_Type;
+   
+   package Char_Set is new Ada.Containers.Hashed_Sets 
+     ( Element_Type => Character,
+       Hash => Charac_Hash,
+       Equivalent_Elements => Standard."="
+      );
    
    function Natural_Hash(El: Natural) return Ada.Containers.Hash_Type;
    
@@ -18,7 +27,6 @@ package Code_Gen is
        Equivalent_Elements => Standard."="
       );
    
-   function Charac_Hash(Key: Character) return Ada.Containers.Hash_Type;
    
    function Equiv_Keys (Left, Right: Character) return Boolean;
    
@@ -30,9 +38,14 @@ package Code_Gen is
        "=" => State_Set."="
       );
    
+   type Transition_Kind is (By_Char, By_Range, By_Range_Complement);
+   
    type Transitions is record 
       input_transitions: Input_To_State.Map;
       epsilon_transitions: State_Set.Set;
+      kind: Transition_Kind;
+      range_inputs: Char_Set.Set;
+      range_states: State_Set.Set;
    end record;	
    
    function Equal_Transitions(Left, Right : Transitions) return Boolean;
