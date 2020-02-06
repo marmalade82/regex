@@ -115,6 +115,72 @@ package body Code_Gen_Tests is
       Assert(not Recognize(v_machine, To_Unbounded_String("e")), "Fails to reject unintended string");
    end Test_Gen_Multi_Union;
    
+   procedure Test_Gen_Mix_Union_Concat(T: in out Test_Case'Class) is 
+      v_machine: NFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Pipe, To_Unbounded_String("|")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("b")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("c")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_NFA(v_tree);
+      -- 6 from the character NFAs, and one from the union
+      Assert(Count_State(v_machine) = 7, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("bc")), "Does not recognize the intended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("ac")), "Fails to reject unintended string");
+   end Test_Gen_Mix_Union_Concat;
+   
+    procedure Test_Gen_Mix_Concat_Union(T: in out Test_Case'Class) is 
+      v_machine: NFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("b")) &
+        Make_Token(Parse_Types.Pipe, To_Unbounded_String("|")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("c")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_NFA(v_tree);
+      -- 6 from the character NFAs, and one from the union
+      Assert(Count_State(v_machine) = 7, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Recognize(v_machine, To_Unbounded_String("ab")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("c")), "Does not recognize the intended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("ac")), "Fails to reject unintended string");
+   end Test_Gen_Mix_Concat_Union;
+   
+   procedure Test_Gen_Multi_Concat_Union(T: in out Test_Case'Class) is 
+      v_machine: NFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("b")) &
+        Make_Token(Parse_Types.Pipe, To_Unbounded_String("|")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("c")) &
+        Make_Token(Parse_Types.Pipe, To_Unbounded_String("|")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("d")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("e")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_NFA(v_tree);
+      -- 10 from the character NFAs, and 2 from the unions
+      Assert(Count_State(v_machine) = 12, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Recognize(v_machine, To_Unbounded_String("ab")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("c")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("de")), "Does not recognize the intended string");
+   end Test_Gen_Multi_Concat_Union;
+   
    procedure Register_Tests(T: in out Code_Gen_Test) is 
       use AUnit.Test_Cases.Registration;
    begin
@@ -123,6 +189,9 @@ package body Code_Gen_Tests is
       Register_Routine(T, Test_Gen_Multi_Concat'Access, "Processes multiple concatenation");
       Register_Routine(T, Test_Gen_Union'Access, "Processes a single union");
       Register_Routine(T, Test_Gen_Multi_Union'Access, "Processes multiple union");
+      Register_Routine(T, Test_Gen_Mix_Union_Concat'Access, "Processes union then concat");
+      Register_Routine(T, Test_Gen_Mix_Concat_Union'Access, "Processes concat then union");
+      Register_Routine(T, Test_Gen_Multi_Concat_Union'Access, "Processes multiple mixed concats and unions");
    end Register_Tests;
 
 end Code_Gen_Tests;
