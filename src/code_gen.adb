@@ -3,6 +3,7 @@ with Ada.Containers.Hashed_Maps;
 with Ada.Strings.Hash;
 with Parser;
 with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Characters.Handling; use Ada.Characters.Handling;
 
 
 package body Code_Gen is
@@ -365,6 +366,73 @@ package body Code_Gen is
       end if;
    end Gen_Union;
    
+   function Range_From_Interval(The_Interval: Regex_AST.Cursor) return Char_Set.Set is 
+      My_Left : Regex_AST.Cursor;
+      My_Right : Regex_AST.Cursor;
+      My_Left_Token : Abstract_Syntax_Token;
+      My_Right_Token : Abstract_Syntax_Token;
+      My_Range : Char_Set.Set := Char_Set.Empty_Set;
+      My_Left_Char : Character;
+      My_Right_Char : Character;
+      My_Valid_Pair : Boolean;
+      
+      function Valid(The_Left, The_Right : Abstract_Syntax_Token) return Boolean is 
+         My_Left_Char : Character;
+         My_Right_Char : Character;
+      begin 
+         -- The two operands should both have the Character class
+         if The_Left.f_class /= The_Right.f_class then
+            return False;
+         end if;
+         
+         if The_Left.f_class /= Parse_Types.Character then
+            return False;
+         end if;
+         
+         -- There are only a few valid comparisons for an interval
+         -- Two lowercase, two uppercase, or two digits
+         My_Left_Char := Element(The_Left.f_lexeme, Length(The_Left.f_lexeme));
+         My_Right_Char := Element(The_Right.f_lexeme, Length(The_Right.f_lexeme));
+         My_Valid_Pair := 
+           (Is_Lower(My_Left_Char) and then Is_Lower(My_Right_Char)) or else
+           (Is_Upper(My_Left_Char) and then Is_Upper(My_Right_Char)) or else
+           (Is_Digit(My_Left_Char) and then Is_Digit(My_Right_Char));
+           
+         if not My_Valid_Pair then
+            return False;
+         end if;
+         
+         -- The left should be less than or equal to the right.
+         if (My_Left_Char > My_Right_Char) then
+            return False;
+         end if;
+         
+         return True;
+      end Valid;
+   begin
+      My_Left := First_Child(The_Interval);
+      My_Right := Next_Sibling(My_Left);
+      
+      if My_Left /= Regex_AST.No_Element and then My_Right /= Regex_AST.No_Element then 
+         My_Left_Token := Element(My_Left);
+         My_Right_Token := Element(My_Right);
+         My_Left_Char := Element(My_Left_Token.f_lexeme, Length(My_Left_Token.f_lexeme));
+         My_Right_Char := Element(My_Right_Token.f_lexeme, Length(My_Right_Token.f_lexeme));
+         if Valid(My_Left_Token, My_Right_Token) then 
+            
+            for C in My_Left_Char .. My_Right_Char loop
+               Char_Set.Insert(My_Range, C);
+            end loop;
+            
+            return My_Range;
+         else 
+            raise Invalid_Subtree with ("Interval's children were not valid: " & My_Left_Char & My_Right_Char);
+         end if;   
+      else 
+         raise Invalid_Subtree with "Interval did not have two children";
+      end if;
+   end Range_From_Interval;
+   
    -- This expects that the group subtree has been flattened as much as possible
    function Gen_Range_Group(The_Token : Abstract_Syntax_Token; The_Parent: Regex_AST.Cursor) return NFA is 
       A_Transition : Transitions;
@@ -378,6 +446,8 @@ package body Code_Gen is
             when Parse_Types.Character =>
                An_Input := Element(A_Token.f_lexeme, Length(A_Token.f_lexeme));
                Char_Set.Insert(Some_Range_Inputs, An_Input);
+            when Parse_Types.Range_Interval => 
+               Char_Set.Union(Some_Range_Inputs, Range_From_Interval(The_Position));
             when others => 
                raise Unknown_AST_Token with "Token that a range cannot handle";
          end case;	
