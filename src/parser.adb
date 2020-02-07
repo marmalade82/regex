@@ -247,6 +247,7 @@ package body parser is
       v_opt_cursor: Regex_AST.Cursor;
       v_group_tree : Tree;
       v_group_cursor: Regex_AST.Cursor;
+      My_Child_Cursor : Regex_AST.Cursor;
    begin 
       v_position := p_position;
       v_success := 
@@ -257,12 +258,23 @@ package body parser is
          if v_opt_cursor /= Regex_AST.No_Element then
             case Element(v_opt_cursor).f_class is 
                when Grouping =>
-                  case Element(First_Child(First_Child(Root(v_opt_tree)))).f_class is 
+                  -- if it's a grouping, we may need to attach the char expr to the first child if it's an 
+                  -- incomplete interval.
+                  My_Child_Cursor := First_Child(First_Child(Root(v_opt_tree)));
+                  case Element(My_Child_Cursor).f_class is 
                      when Range_Interval =>
-                        Attach_Leftmost_Subtree
-                          ( v_opt_tree, First_Child(First_Child(Root(v_opt_tree))), 
-                            v_char_cursor
-                           );
+                        if Natural(Child_Count(My_Child_Cursor)) >= 2 then 
+                           -- the interval is complete, so we just add to the grouping, not the interval.
+                           Attach_Leftmost_Subtree
+                             ( v_opt_tree, v_opt_cursor, v_char_cursor);
+                        else 
+                           -- the interval is not complete
+                            Attach_Leftmost_Subtree
+                             ( v_opt_tree, My_Child_Cursor, 
+                               v_char_cursor
+                              );
+                        end if;
+                       
                      when Parse_Types.Character =>
                         Attach_Leftmost_Subtree
                           ( v_opt_tree, v_opt_cursor, v_char_cursor);
