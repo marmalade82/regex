@@ -433,24 +433,32 @@ package body Code_Gen is
       end if;
    end Range_From_Interval;
    
+   function Build_Range_Helper(The_Position : Regex_AST.Cursor; The_Range_Inputs : Char_Set.Set) return Char_Set.Set is 
+      An_Input : Character;
+      A_Token : Abstract_Syntax_Token;
+      My_New_Set : Char_Set.Set := Char_Set.Empty_Set;
+   begin
+      A_Token := Element(The_Position);
+      case A_Token.f_class is 
+         when Parse_Types.Character =>
+            An_Input := Element(A_Token.f_lexeme, Length(A_Token.f_lexeme));
+            Char_Set.Insert(My_New_Set, An_Input);
+         when Parse_Types.Range_Interval => 
+            Char_Set.Union(My_New_Set, Range_From_Interval(The_Position));
+         when others => 
+            raise Unknown_AST_Token with "Token that a range cannot handle";
+      end case;
+      
+      return Char_Set.Union(The_Range_Inputs, My_New_Set);
+   end Build_Range_Helper;
+   
    -- This expects that the group subtree has been flattened as much as possible
    function Gen_Range_Group(The_Token : Abstract_Syntax_Token; The_Parent: Regex_AST.Cursor) return NFA is 
       A_Transition : Transitions;
       Some_Range_Inputs : Char_Set.Set;
       procedure Build_Range(The_Position : Regex_AST.Cursor) is 
-         An_Input : Character;
-         A_Token : Abstract_Syntax_Token;
       begin
-         A_Token := Element(The_Position);
-         case A_Token.f_class is 
-            when Parse_Types.Character =>
-               An_Input := Element(A_Token.f_lexeme, Length(A_Token.f_lexeme));
-               Char_Set.Insert(Some_Range_Inputs, An_Input);
-            when Parse_Types.Range_Interval => 
-               Char_Set.Union(Some_Range_Inputs, Range_From_Interval(The_Position));
-            when others => 
-               raise Unknown_AST_Token with "Token that a range cannot handle";
-         end case;	
+         Some_Range_Inputs := Build_Range_Helper(The_Position, Some_Range_Inputs);
          
       end Build_Range;
    begin 
@@ -476,18 +484,8 @@ package body Code_Gen is
       A_Transition : Transitions;
       Some_Range_Inputs : Char_Set.Set;
       procedure Build_Range(The_Position : Regex_AST.Cursor) is 
-         An_Input : Character;
-         A_Token : Abstract_Syntax_Token;
       begin
-         A_Token := Element(The_Position);
-         case A_Token.f_class is 
-            when Parse_Types.Character =>
-               An_Input := Element(A_Token.f_lexeme, Length(A_Token.f_lexeme));
-               Char_Set.Insert(Some_Range_Inputs, An_Input);
-            when others => 
-               raise Unknown_AST_Token with "Token that a range cannot handle";
-         end case;	
-         
+         Some_Range_Inputs := Build_Range_Helper(The_Position, Some_Range_Inputs);
       end Build_Range;
    begin 
       Iterate_Children(The_Parent, Build_Range'Access);
