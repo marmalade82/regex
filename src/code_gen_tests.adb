@@ -50,6 +50,119 @@ package body Code_Gen_Tests is
       Assert(not Recognize(v_machine, To_Unbounded_String("b")), "Fails to reject unintended string");
    end Test_Gen_Simple_Wildcard;
    
+   procedure Test_Gen_Concat_Wildcard_Precedence(T : in out Test_Case'Class) is 
+      v_machine: NFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Asterisk, To_Unbounded_String("*")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_NFA(v_tree);
+      Assert(Count_State(v_machine) = 6, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("aa")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("aaa")), "Does not recognize the intended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("")), "Fails to reject unintended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("b")), "Fails to reject unintended string");
+   end Test_Gen_Concat_Wildcard_Precedence;
+   
+   procedure Test_Gen_Concat_Wildcard(T : in out Test_Case'Class) is 
+      v_machine: NFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Left_Paren, To_Unbounded_String("(")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Right_Paren, To_Unbounded_String(")")) &
+        Make_Token(Parse_Types.Asterisk, To_Unbounded_String("*")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_NFA(v_tree);
+      Assert(Count_State(v_machine) = 6, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Recognize(v_machine, To_Unbounded_String("")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("aa")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("aaaa")), "Does not recognize the intended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("a")), "Fails to reject unintended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("aaa")), "Fails to reject unintended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("b")), "Fails to reject unintended string");
+   end Test_Gen_Concat_Wildcard;
+   
+   procedure Test_Gen_Simple_Plus(T : in out Test_Case'Class) is 
+      v_machine: NFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Plus, To_Unbounded_String("+")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_NFA(v_tree);
+      Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("aa")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("aaa")), "Does not recognize the intended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("")), "Fails to reject unintended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("b")), "Fails to reject unintended string");
+      -- 2 states from initial char nfa, and then 4 from the following wildcard nfa
+      Assert(Count_State(v_machine) = 6, "Generates incorrect number of states: " & Count_State(v_machine)'Image);	
+   end Test_Gen_Simple_Plus;
+   
+   procedure Test_Gen_Union_Plus_Precedence(T : in out Test_Case'Class) is 
+      v_machine: NFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Pipe, To_Unbounded_String("|")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("b")) &
+        Make_Token(Parse_Types.Plus, To_Unbounded_String("+")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_NFA(v_tree);
+      Assert(Count_State(v_machine) = 9, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("b")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("bb")), "Does not recognize the intended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("aa")), "Fails to reject unintended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("")), "Fails to reject unintended string");
+   end Test_Gen_Union_Plus_Precedence;
+   
+   procedure Test_Gen_Union_Plus(T : in out Test_Case'Class) is 
+      v_machine: NFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Left_Paren, To_Unbounded_String("(")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Pipe, To_Unbounded_String("|")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("b")) &
+        Make_Token(Parse_Types.Right_Paren, To_Unbounded_String(")")) &
+        Make_Token(Parse_Types.Plus, To_Unbounded_String("+")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_NFA(v_tree);
+      Assert(Count_State(v_machine) = 12, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("b")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("aa")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("bb")), "Does not recognize the intended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("c")), "Fails to reject unintended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("")), "Fails to reject unintended string");
+   end Test_Gen_Union_Plus;
+   
    procedure Test_Gen_Concat(T: in out Test_Case'Class) is 
       v_machine: NFA;
       v_input: Vector := Empty_Vector &
@@ -78,7 +191,6 @@ package body Code_Gen_Tests is
       v_tree: Tree;
       v_success : Boolean;
    begin 
-      Put_Line("Multi concat startng");
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_NFA(v_tree);
@@ -98,7 +210,6 @@ package body Code_Gen_Tests is
       v_tree: Tree;
       v_success : Boolean;
    begin 
-      Put_Line("Union starting");
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_NFA(v_tree);
@@ -122,7 +233,6 @@ package body Code_Gen_Tests is
       v_tree: Tree;
       v_success : Boolean;
    begin 
-      Put_Line("Union starting");
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_NFA(v_tree);
@@ -387,7 +497,13 @@ package body Code_Gen_Tests is
       Register_Routine(T, Test_Gen_Range_Unions'Access, "Processes a union of multiple ranges");
       Register_Routine(T, Test_Gen_Complement_Concats'Access, "Processes a concatenation of multiple range complements");
       Register_Routine(T, Test_Gen_Simple_Wildcard'Access, "Processes a wildcard of one character");
-
+      Register_Routine(T, Test_Gen_Concat_Wildcard_Precedence'Access, "Confirms wildcard has higher precedence");
+      Register_Routine(T, Test_Gen_Concat_Wildcard'Access, "Processes a wildcard of a concatenated fragment");
+      Register_Routine(T, Test_Gen_Simple_Plus'Access, "Processes a plus of one character");
+      Register_Routine(T, Test_Gen_Union_Plus_Precedence'Access, "Confirms Plus has higher precedence");
+      Register_Routine(T, Test_Gen_Union_Plus'Access, "Processes a Plus of a Union Fragment");
+      
+      
    end Register_Tests;
 
 end Code_Gen_Tests;

@@ -60,20 +60,22 @@ package body Code_Gen is
       procedure Get_Epsilon_States(Position: State_Set.Cursor) is 
          v_state : Natural;
          v_further_states : Set;
+         v_difference : Set;
       begin
          v_state := Element(Position);
          
          -- Look at the epsilon states, but just the new ones that aren't in the existing states
          -- We only dig deeper if we find new states.
-         v_new_states := Difference(Element(state_table, v_state).epsilon_transitions, v_states);
-         if not Is_Empty(v_new_states) then
-            -- add the old states, and then explore deeper
-            Union(v_new_states, v_states);
+         -- THIS IS WRONG.
+         v_difference := Difference(Element(state_table, v_state).epsilon_transitions, v_states);
+         Union(v_new_states, v_states);
+         Union(v_new_states, v_difference);
+         if not Is_Empty(v_difference) then
+            -- add the new states, and then explore deeper
+            Union(v_new_states, Copy(v_states));
             v_further_states := Get_Epsilon_Closure(v_new_states, state_table);
             
-            Union(v_new_states, v_further_states);
-         else 
-            Union(v_new_states, v_states);
+            Union(v_new_states, Copy(v_further_states));
          end if;       
       end Get_Epsilon_States;
    begin
@@ -155,17 +157,13 @@ package body Code_Gen is
       current_states := Get_Epsilon_Closure(initial_states, machine.states);
       for I in 1..Length(input) loop
          c := Element(input, I);
-         Put_Line("read character " & c);
          
          -- for each state in the current states, get the new states and append to the new states.
-         Put_Line("current states are " & As_String(current_states));
          new_states := Empty_Set;
          new_states := Get_New_States(current_states, machine.states, c);
-         Put_Line("new states are " & As_String(new_states));
          
          -- if the new_states are empty, we could not transition on the input at all
          if Is_Empty(new_states) then 
-            Put_Line("Failed because could not find more new states with current state set as " & As_String(current_states));
             return False;
          else 
             current_states := Copy(new_states);
@@ -279,14 +277,29 @@ package body Code_Gen is
              );
    end Gen_Character;
    
+   function Make_Concat_NFA(The_Left : NFA; The_Right : NFA) return NFA is 
+      My_Right_New_Start : Natural;
+      My_Left_Updated_States : Vector;
+   begin 
+      -- at this point, the first nfa's accepting state transitions need to be modified to 
+      -- have an epsilon transition to the starting state of the second nfa.
+      My_Right_New_Start := Natural(Length(The_Left.states));
+      My_Left_Updated_States := Update_States_To_Epsilon_Transition_To
+        (The_Left.states, The_Left.accepting, My_Right_New_Start);
+      
+      return (
+              start => 0, -- we start at start of first nfa
+              states => Join(My_Left_Updated_States, Increment_All_Transitions_By(The_Right.states, My_Right_New_Start)),
+              accepting => Increment_By(The_Right.accepting, My_Right_New_Start)
+             );
+   end Make_Concat_NFA;
+   
    function Gen_Concat(tok : Abstract_Syntax_Token; p_cursor: Regex_AST.Cursor) return NFA is 
       v_map : Map;
       v_first_child : Regex_AST.Cursor;
       v_second_child : Regex_AST.Cursor;
       v_first_nfa: NFA;
       v_second_nfa: NFA;
-      v_second_nfa_new_start : Natural;
-      v_updated_first_nfa_states : Vector;
    begin
       -- Need to grab NFAs made from first two children and then combine them into one NFA.
       v_first_child := First_Child(p_cursor);
@@ -296,17 +309,7 @@ package body Code_Gen is
          v_first_nfa := Gen_NFA(v_first_child);
          v_second_nfa := Gen_NFA(v_second_child);
          
-         -- at this point, the first nfa's accepting state transitions need to be modified to 
-         -- have an epsilon transition to the starting state of the second nfa.
-         v_second_nfa_new_start := Natural(Length(v_first_nfa.states));
-         v_updated_first_nfa_states := Update_States_To_Epsilon_Transition_To
-           (v_first_nfa.states, v_first_nfa.accepting, v_second_nfa_new_start);
-         
-         return (
-                 start => 0, -- we start at start of first nfa
-                 states => Join(v_updated_first_nfa_states, Increment_All_Transitions_By(v_second_nfa.states, v_second_nfa_new_start)),
-                 accepting => Increment_By(v_second_nfa.accepting, v_second_nfa_new_start)
-                 );
+         return Make_Concat_NFA(v_first_nfa, v_second_nfa);
       else
          raise Invalid_Subtree with "Concat subtree did not have two subtrees";
       end if;
@@ -433,10 +436,89 @@ package body Code_Gen is
                accepting => To_Set(1)
               );
    end Gen_Range_Complement;
+   
+   
+   function Make_Wildcard_NFA(The_NFA : NFA) return NFA is 
+      My_Inner_Start: Natural;
+      My_Inner_State_Table : Vector;
+      My_Start_Transition : Transitions;
+      
+   begin
+      -- to augment this NFA, we need to add a new start and accepting state,
+      -- which we will put at the start of the state table.
+      My_Inner_Start := 1;
+      My_Start_Transition := ( input_transitions => Empty_Map,
+                               kind => By_Char,
+                               range_inputs => Char_Set.Empty_Set,
+                               range_states => State_Set.Empty_Set,
+                               epsilon_transitions => 
+                                 State_Set.Union( 
+                                   -- transitions to accepting state and start of inner nfa.
+                                   State_Set.To_Set(My_Inner_Start + Natural(Length(The_NFA.states))),
+                                   State_Set.To_Set(My_Inner_Start)  
+                                  )
+                              );
+        
+      My_Inner_State_Table := 
+        Increment_All_Transitions_By -- Bump all the old states to their new positions
+          (
+           Update_States_To_Epsilon_Transition_To -- update old accepting states to transition to new accepting state.
+             ( The_NFA.states, The_NFA.accepting, Natural(Length(The_NFA.states))
+             ), 
+           My_Inner_Start
+          );
+           
+      return ( start => 0,
+               states => Empty_Vector &
+                 My_Start_Transition & 
+                 My_Inner_State_Table &
+               ( input_transitions => Empty_Map,
+                 kind => By_Char,
+                 range_inputs => Char_Set.Empty_Set,
+                 range_states => State_Set.Empty_Set,
+                 epsilon_transitions => State_Set.To_Set(0) -- accepting state can transition back to to start.
+                ),
+               accepting => To_Set(My_Inner_Start + Natural(Length(The_NFA.states)))
+              );
+   end Make_Wildcard_NFA;
+   
+   function Gen_Zero_Or_More(The_Token : Abstract_Syntax_Token; The_Parent: Regex_AST.Cursor) return NFA is 
+      v_map : Map;
+      v_first_child : Regex_AST.Cursor;
+      v_first_nfa: NFA;
+   begin
+      -- Need to grab NFAs made from first child and then augment it into a wildcard.
+      v_first_child := First_Child(The_Parent);
+      
+      if v_first_child /= Regex_AST.No_Element then 
+         v_first_nfa := Gen_NFA(v_first_child);
+         
+         return Make_Wildcard_NFA(v_first_nfa);
+      else 
+         raise Invalid_Subtree with "Wildcard subtree had zero subtrees";
+      end if;
+      
+   end Gen_Zero_Or_More;
+   
+   function Gen_One_Or_More(The_Token : Abstract_Syntax_Token; The_Parent: Regex_AST.Cursor) return NFA is 
+      v_map : Map;
+      v_first_child : Regex_AST.Cursor;
+      v_first_nfa: NFA;
+   begin
+      -- Need to grab NFAs made from first child and then augment it into a plus.
+      v_first_child := First_Child(The_Parent);
+      
+      if v_first_child /= Regex_AST.No_Element then 
+         v_first_nfa := Gen_NFA(v_first_child);
+         
+         return Make_Concat_NFA(v_first_nfa, Make_Wildcard_NFA(v_first_nfa));
+      else 
+         raise Invalid_Subtree with "Plus subtree had zero subtrees";
+      end if;
+   end Gen_One_Or_More;
 
    function Gen_NFA(p_cursor: Regex_AST.Cursor) return NFA is 
       v_token : Abstract_Syntax_Token;
-      --v_map : Map;
    begin 
       v_token := Element(p_cursor);
       case v_token.f_class is 
@@ -450,6 +532,10 @@ package body Code_Gen is
             return Gen_Range_Group(v_token, p_cursor);
          when Parse_Types.Range_Complement =>
             return Gen_Range_Complement(v_token, p_cursor);
+         when Parse_Types.Zero_Or_More =>
+            return Gen_Zero_Or_More(v_token, p_cursor);
+         when Parse_Types.One_Or_More => 
+            return Gen_One_Or_More(v_token, p_cursor);
          when others => 
             raise Unknown_AST_Token with "Unknown token while generating NFA";
       end case;
