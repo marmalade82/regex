@@ -516,6 +516,29 @@ package body Code_Gen is
          raise Invalid_Subtree with "Plus subtree had zero subtrees";
       end if;
    end Gen_One_Or_More;
+   
+   function Gen_Optional(The_Token : Abstract_Syntax_Token; The_Parent: Regex_AST.Cursor) return NFA is 
+      v_map : Map;
+      v_first_child : Regex_AST.Cursor;
+      My_Optional_NFA : NFA;
+   begin
+      -- Need to grab NFAs made from first child and then augment it into an optional.
+      -- The simplest way to do this is to make the starting state an accepting state.
+      -- Ideally, in terms of primitives, we would like to union this NFA with the next NFA in the sequence,
+      -- but based on our loop, implementing this would be more trouble than it's worth.
+      -- So in our case, we'll regard the optional as an additional primitive.
+      v_first_child := First_Child(The_Parent);
+      
+      if v_first_child /= Regex_AST.No_Element then          
+         My_Optional_NFA := Gen_NFA(v_first_child);
+         
+         State_Set.Insert(My_Optional_NFA.accepting, My_Optional_NFA.start);
+         
+         return My_Optional_NFA; 
+      else 
+         raise Invalid_Subtree with "Optional subtree had zero subtrees";
+      end if;
+   end Gen_Optional;
 
    function Gen_NFA(p_cursor: Regex_AST.Cursor) return NFA is 
       v_token : Abstract_Syntax_Token;
@@ -536,6 +559,8 @@ package body Code_Gen is
             return Gen_Zero_Or_More(v_token, p_cursor);
          when Parse_Types.One_Or_More => 
             return Gen_One_Or_More(v_token, p_cursor);
+         when Parse_Types.Optional =>
+            return Gen_Optional(v_token, p_cursor);
          when others => 
             raise Unknown_AST_Token with "Unknown token while generating NFA";
       end case;

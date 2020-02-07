@@ -163,6 +163,66 @@ package body Code_Gen_Tests is
       Assert(not Recognize(v_machine, To_Unbounded_String("")), "Fails to reject unintended string");
    end Test_Gen_Union_Plus;
    
+   procedure Test_Gen_Simple_Question(T : in out Test_Case'Class) is 
+      v_machine: NFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Question, To_Unbounded_String("?")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_NFA(v_tree);
+      Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("")), "Does not recognize the intended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("aa")), "Fails to reject unintended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("b")), "Fails to reject unintended string");
+      Assert(Count_State(v_machine) = 2, "Generates incorrect number of states: " & Count_State(v_machine)'Image);	
+   end Test_Gen_Simple_Question;
+   
+   procedure Test_Gen_Concat_Question_Precedence(T : in out Test_Case'Class) is 
+      v_machine: NFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("b")) &
+        Make_Token(Parse_Types.Question, To_Unbounded_String("?")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_NFA(v_tree);
+      Assert(Count_State(v_machine) = 4, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("ab")), "Does not recognize the intended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("")), "Fails to reject unintended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("b")), "Fails to reject unintended string");
+   end Test_Gen_Concat_Question_Precedence;
+   
+   procedure Test_Gen_Concat_Question(T : in out Test_Case'Class) is 
+      v_machine: NFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Left_Paren, To_Unbounded_String("(")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("b")) &
+        Make_Token(Parse_Types.Right_Paren, To_Unbounded_String(")")) &
+        Make_Token(Parse_Types.Question, To_Unbounded_String("?")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_NFA(v_tree);
+      Assert(Recognize(v_machine, To_Unbounded_String("ab")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("")), "Does not recognize the intended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("c")), "Fails to reject unintended string");
+      Assert(Count_State(v_machine) = 4, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+   end Test_Gen_Concat_Question;
+   
    procedure Test_Gen_Concat(T: in out Test_Case'Class) is 
       v_machine: NFA;
       v_input: Vector := Empty_Vector &
@@ -502,7 +562,9 @@ package body Code_Gen_Tests is
       Register_Routine(T, Test_Gen_Simple_Plus'Access, "Processes a plus of one character");
       Register_Routine(T, Test_Gen_Union_Plus_Precedence'Access, "Confirms Plus has higher precedence");
       Register_Routine(T, Test_Gen_Union_Plus'Access, "Processes a Plus of a Union Fragment");
-      
+      Register_Routine(T, Test_Gen_Simple_Question'Access, "Processes an optional of one character");
+      Register_Routine(T, Test_Gen_Concat_Question_Precedence'Access, "Confirms optional has higher precedence");
+      Register_Routine(T, Test_Gen_Concat_Question'Access, "Processes an optional of a concatenated fragment");
       
    end Register_Tests;
 
