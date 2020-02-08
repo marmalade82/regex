@@ -6,11 +6,11 @@ package Parse_Types is
 
    Unexpected_Token : exception;
    
-   type Class is ( Character, Newline, Pipe, EOF,
+   type Class is ( Character, Pipe, EOF,
                    Left_Bracket, Right_Bracket, Hyphen,
                    Caret, Asterisk, Plus, Question,
                    Left_Paren, Right_Paren, Dollar,
-                   Tab, Carriage_Return
+                   Tab, Carriage_Return, Newline
                   );
    
    type Token is record
@@ -25,10 +25,10 @@ package Parse_Types is
      );
    
    type Abstract_Syntax_Class is 
-     ( Newline, Character, Union, Concat, Range_Group,
+     ( Character, Union, Concat, Range_Group,
        Range_Interval, Grouping, Range_Complement,
        Zero_Or_More, One_Or_More, Optional, Match_Start,
-       Match_End, Tab, Carriage_Return
+       Match_End, Tab, Carriage_Return, Newline
      );
    
    type Abstract_Syntax_Token is record

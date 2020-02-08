@@ -70,6 +70,14 @@ package Code_Gen is
    
    function Recognize(machine: NFA; input: Unbounded_String) return Boolean;
    
+   subtype Escape_Characters is Abstract_Syntax_Class with 
+     Static_Predicate => Escape_Characters in Newline | Tab | Carriage_Return;
+   
+   subtype Non_NFA_Classes is Abstract_Syntax_Class with
+     Static_Predicate => Non_NFA_Classes in Range_Interval | Grouping;
+                            
+                            
+   
    
 
 end Code_Gen;

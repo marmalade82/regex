@@ -4,6 +4,7 @@ with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Parser; use Parser;
 with Parse_Types; use Parse_Types; use Parse_Types.Token_Vector; use Parse_Types.Regex_AST;
 with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Characters.Latin_1; use Ada.Characters.Latin_1;
 
 
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
@@ -727,6 +728,46 @@ package body Code_Gen_Tests is
       Assert(Count_State(v_machine) = 2, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
    end Test_Gen_Mixed_Complement;
    
+   procedure Test_Ignore_Match_Start_End(T : in out Test_Case'Class) is 
+      v_machine: NFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Caret, To_Unbounded_String("^")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Dollar, To_Unbounded_String("$")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_NFA(v_tree);
+      Assert(Count_State(v_machine) = 2, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("b")), "Fails to reject unintended string");
+   end Test_Ignore_Match_Start_End;
+   
+   procedure Test_Gen_Escape_Characters(T: in out Test_Case'Class) is 
+      v_machine: NFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("\a")) &
+        Make_Token(Parse_Types.Newline, To_Unbounded_String("\n")) &
+        Make_Token(Parse_Types.Tab, To_Unbounded_String("\t")) &
+        Make_Token(Parse_Types.Carriage_Return, To_Unbounded_String("\r")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_NFA(v_tree);
+      Assert(Recognize(v_machine, 
+             To_Unbounded_String("a" & LF & HT & CR)), 
+             "Does not recognize the intended string"
+            );
+      Assert(not Recognize(v_machine, To_Unbounded_String("b")), "Fails to reject unintended string");
+      Assert(Count_State(v_machine) = 8, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+   end Test_Gen_Escape_Characters;
+   
    procedure Register_Tests(T: in out Code_Gen_Test) is 
       use AUnit.Test_Cases.Registration;
    begin
@@ -760,6 +801,8 @@ package body Code_Gen_Tests is
       Register_Routine(T, Test_Gen_Simple_Interval_Complement'Access, "Processes a complement of a simple interval");
       Register_Routine(T, Test_Gen_Multi_Interval_Complement'Access, "Processes a complement of a multiple intervals");
       Register_Routine(T, Test_Gen_Mixed_Complement'Access, "Processes a complement of mixed characters and intervals");
+      Register_Routine(T, Test_Ignore_Match_Start_End'Access, "Ignores the match start and match end parts of the AST");
+      Register_Routine(T, Test_Gen_Escape_Characters'Access, "Processes known escaped characters");
 	
       
    end Register_Tests;

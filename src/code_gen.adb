@@ -4,6 +4,7 @@ with Ada.Strings.Hash;
 with Parser;
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Characters.Handling; use Ada.Characters.Handling;
+with Ada.Characters.Latin_1; use Ada.Characters.Latin_1;
 
 
 package body Code_Gen is
@@ -255,14 +256,14 @@ package body Code_Gen is
       Iterate(states, Update_Epsilon_Transition'Access);
       return v_new_state_table;
    end Update_States_To_Epsilon_Transition_To;
-
-   function Gen_Character(tok : Abstract_Syntax_Token; p_cursor: Regex_AST.Cursor) return NFA is 
+   
+   function Make_Character_NFA(The_Character : Character) return NFA is 
       v_map : Map;
       v_transitions: Transitions;
    begin
       v_map := Empty_Map;
       -- for this nfa, a single character is enough.
-      Insert(v_map, Element(tok.f_lexeme, Length(tok.f_lexeme)), To_Set(1));
+      Insert(v_map, The_Character, To_Set(1));
       v_transitions := ( input_transitions => v_map,
                          epsilon_transitions => Empty_Set,
                          kind => By_Char,
@@ -276,7 +277,27 @@ package body Code_Gen is
                 Empty_Transitions, -- no transitions from the accepting state.
               accepting => To_Set(1) -- says that accepting states includes State 1       
              );
+   end Make_Character_NFA;
+
+   function Gen_Character(tok : Abstract_Syntax_Token; p_cursor: Regex_AST.Cursor) return NFA is 
+   begin
+      return Make_Character_NFA( Element(tok.f_lexeme, Length(tok.f_lexeme)) );
    end Gen_Character;
+   
+   function Gen_Escape_Character(The_Class : Escape_Characters; p_cursor: Regex_AST.Cursor) return NFA is 
+      My_NFA : NFA;
+   begin
+      case The_Class is 
+         when Newline =>
+            My_NFA := Make_Character_NFA(LF);
+         when Tab =>
+            My_NFA := Make_Character_NFA(HT);
+         when Carriage_Return =>
+            My_NFA := Make_Character_NFA(CR);
+        end case;
+      
+      return My_NFA;
+   end Gen_Escape_Character;
    
    function Make_Concat_NFA(The_Left : NFA; The_Right : NFA) return NFA is 
       My_Right_New_Start : Natural;
@@ -611,8 +632,9 @@ package body Code_Gen is
    function Gen_NFA(p_cursor: Regex_AST.Cursor) return NFA is 
       v_token : Abstract_Syntax_Token;
    begin 
-      v_token := Element(p_cursor);
-      case v_token.f_class is 
+      if p_cursor /= Regex_AST.No_Element then 
+         v_token := Element(p_cursor);
+         case v_token.f_class is 
          when Parse_Types.Character =>
             return Gen_Character(v_token, p_cursor);
          when Parse_Types.Concat =>
@@ -629,9 +651,20 @@ package body Code_Gen is
             return Gen_One_Or_More(v_token, p_cursor);
          when Parse_Types.Optional =>
             return Gen_Optional(v_token, p_cursor);
-         when others => 
-            raise Unknown_AST_Token with "Unknown token while generating NFA";
-      end case;
+         when Parse_Types.Match_Start | Parse_Types.Match_End =>
+            -- ignore what are essentially operational directives
+            return Gen_NFA(First_Child(p_cursor));
+         when Escape_Characters =>
+            return Gen_Escape_Character(v_token.f_class, p_cursor);
+         when Non_NFA_Classes => 
+            raise Unknown_AST_Token with "Cannot use this token while generating NFA";
+         end case;
+      else 
+         return ( start => 0,
+                  states => Empty_Vector,
+                  accepting => Empty_Set
+                 );
+      end if;
    end Gen_NFA;
    
    function Gen_NFA(AST: Tree) return NFA is 
