@@ -29,7 +29,10 @@ package Parse_Types is
        Range_Interval, Grouping, Range_Complement,
        Zero_Or_More, One_Or_More, Optional, Match_Start,
        Match_End, Tab, Carriage_Return, Newline
-     );
+      );
+   
+   subtype Escape_Characters is Abstract_Syntax_Class with
+     Static_Predicate => Escape_Characters in Newline | Carriage_Return | Tab;
    
    type Abstract_Syntax_Token is record
       f_class : Abstract_Syntax_Class;

@@ -294,7 +294,7 @@ package body Code_Gen is
             My_NFA := Make_Character_NFA(HT);
          when Carriage_Return =>
             My_NFA := Make_Character_NFA(CR);
-        end case;
+      end case;
       
       return My_NFA;
    end Gen_Escape_Character;
@@ -454,6 +454,21 @@ package body Code_Gen is
       end if;
    end Range_From_Interval;
    
+   function Escape_Char_Set( The_Class : Escape_Characters ) return Char_Set.Set is 
+      My_Set : Char_Set.Set := Char_Set.Empty_Set;
+   begin
+      case The_Class is 
+         when Newline =>
+            My_Set := Char_Set.To_Set(LF);
+         when Tab =>
+            My_Set := Char_Set.To_Set(HT);
+         when Carriage_Return =>
+            My_Set := Char_Set.To_Set(CR);
+      end case;
+      
+      return My_Set;
+   end Escape_Char_Set;
+   
    function Build_Range_Helper(The_Position : Regex_AST.Cursor; The_Range_Inputs : Char_Set.Set) return Char_Set.Set is 
       An_Input : Character;
       A_Token : Abstract_Syntax_Token;
@@ -464,6 +479,8 @@ package body Code_Gen is
          when Parse_Types.Character =>
             An_Input := Element(A_Token.f_lexeme, Length(A_Token.f_lexeme));
             Char_Set.Insert(My_New_Set, An_Input);
+         when Escape_Characters =>
+            Char_Set.Union(My_New_Set, Escape_Char_Set(A_Token.f_class));
          when Parse_Types.Range_Interval => 
             Char_Set.Union(My_New_Set, Range_From_Interval(The_Position));
          when others => 

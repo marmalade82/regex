@@ -301,15 +301,18 @@ package body Parser_Tests is
         Make_Token( Parse_Types.Character, To_Unbounded_String("a")) &
         Make_Token( Parse_Types.Character, To_Unbounded_String("b")) &
         Make_Token( Parse_Types.Character, To_Unbounded_String("c")) &
-        Make_Token( Parse_Types.Character, To_Unbounded_String("d")) &
-        Make_Token( Parse_Types.Character, To_Unbounded_String("e")) &
+        Make_Token( Parse_Types.Character, To_Unbounded_String("\d")) &
+        Make_Token( Parse_Types.Character, To_Unbounded_String("\e")) &
+        Make_Token( Parse_Types.Newline, To_Unbounded_String("\n")) &
+        Make_Token( Parse_Types.Tab, To_Unbounded_String("\r")) &
+        Make_Token( Parse_Types.Carriage_Return, To_Unbounded_String("\t")) &
         Make_Token( Parse_Types.Right_Bracket, To_Unbounded_String("]")) &
         EOF;
       v_success : Boolean;
    begin
       v_success := Parse(v_input, v_tree);
-      Assert( Count(v_tree) = 6, "AST does not have correct count: " & Count(v_tree)'Image );
-      Assert(Get_Tree(v_tree) = ",[,abcde", "AST is actually: " & To_String(Get_Tree(v_tree)));
+      Assert( Count(v_tree) = 9, "AST does not have correct count: " & Count(v_tree)'Image );
+      Assert(Get_Tree(v_tree) = ",[,abc\d\e\n\r\t", "AST is actually: " & To_String(Get_Tree(v_tree)));
       Assert( Includes_Token(v_tree, Make_Token( Parse_Types.Character, To_Unbounded_String("a"))), "AST does not have correct token");
    end Test_Parse_Range_Multi_Char;
    
@@ -622,7 +625,7 @@ package body Parser_Tests is
       Register_Routine(T, Test_Parse_Mix_Union_Concat_1'Access, "Union before concat");
       Register_Routine(T, Test_Parse_Mix_Union_Concat_2'Access, "Concat before union");
       Register_Routine(T, Test_Parse_Range_One_Char'Access, "Range one char");
-      Register_Routine(T, Test_Parse_Range_Multi_Char'Access, "Range multiple characters");
+      Register_Routine(T, Test_Parse_Range_Multi_Char'Access, "Range multiple characters, including escaped characters");
       Register_Routine(T, Test_Parse_Range_One_Interval'Access, "Range one interval");
       Register_Routine(T, Test_Parse_Range_Multi_Interval'Access, "Range multiple intervals");
       Register_Routine(T, Test_Parse_Range_Mix_Char_Interval_1'Access, "Char before interval");
@@ -644,8 +647,7 @@ package body Parser_Tests is
       Register_Routine(T, Test_Parse_Match_Start_End'Access, "Start and End of input");
       Register_Routine(T, Test_Parse_Nested_Unary'Access, "Unary operator on nested expression");
       Register_Routine(T, Test_Parse_Nested_Unary_2'Access, "Unary operator on range");	
-      Register_Routine(T, Test_Parse_Nested_Unary_3'Access, "Unary operator on range complement");	
-      
+      Register_Routine(T, Test_Parse_Nested_Unary_3'Access, "Unary operator on range complement");      
 
 
    end Register_Tests;

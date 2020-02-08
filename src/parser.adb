@@ -213,7 +213,7 @@ package body parser is
                   -- in this case, we pass up a binary tree. Left is interval, right is remainder of expression.
                   -- the group root is just a signal to the caller that multiple things got returned.
                when others =>
-                  raise Unexpected_Token with "Unexpected token: " & 
+                  raise Unexpected_Token with "Unexpected token in range: " & 
                     To_String(Element(v_opt_cursor).f_lexeme);
             end case;
          else
@@ -275,16 +275,16 @@ package body parser is
                               );
                         end if;
                        
-                     when Parse_Types.Character =>
+                     when Parse_Types.Character | Escape_Characters =>
                         Attach_Leftmost_Subtree
                           ( v_opt_tree, v_opt_cursor, v_char_cursor);
                      when others =>
-                        raise Unexpected_Token with "Unexpected token: " & 
+                        raise Unexpected_Token with "Unexpected token in range: " & 
                           To_String(Element(v_opt_cursor).f_lexeme);
                   end case;
                    
                   Pass_Up_Parse_Results(v_position, p_position, v_opt_tree, p_tree, p_cursor);
-               when Parse_Types.Character => 
+               when Parse_Types.Character | Escape_Characters => 
                   One_Node_Tree(v_group_tree, v_group_cursor, (
                                 f_class => Grouping,
                                 f_lexeme => To_Unbounded_String("g")
@@ -308,7 +308,7 @@ package body parser is
                   end if;
                when others =>
                   -- if we get anything else, it was unexpected, and we need to panic
-                  raise Unexpected_Token with "Unexpected token: " & 
+                  raise Unexpected_Token with "Unexpected token in range: " & 
                     To_String(Element(v_opt_cursor).f_lexeme);
             end case; 
       
@@ -355,13 +355,13 @@ package body parser is
                -- the RangeGroup itself.
                Attach_All_Children(v_expr_cursor, v_range_tree, v_range_cursor);
                Pass_Up_Parse_Results(v_position, p_position, v_range_tree, p_tree, p_cursor);
-            when Range_Interval | Parse_Types.Character => 
+            when Range_Interval | Parse_Types.Character | Escape_Characters => 
                -- If we only get one thing back, then we can just 
                -- attach the one thing to the range group
                Attach_Rightmost_Subtree(v_range_tree, v_range_cursor, v_expr_cursor);
                Pass_Up_Parse_Results(v_position, p_position, v_range_tree, p_tree, p_cursor);
             when others =>
-               raise Unexpected_Token with "Unexpected token: " & 
+               raise Unexpected_Token with "Unexpected token in range: " & 
                     To_String(Element(v_expr_cursor).f_lexeme);
          end case;
  
