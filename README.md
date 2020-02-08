@@ -67,7 +67,7 @@ After parsing, the code generator will traverse the new AST and generate an NFA 
 
 If the AST doesn't have these features, the code generator will fail.
 
-## Code Generation of Finite State Automata
+## Code Generation of Nondeterministic Finite State Automata
 
 For a given node of the AST with a token, an NFA will be generated for the following token types, by incorporating the children nodes:
 
@@ -96,6 +96,29 @@ The following token types are used to help direct the operation of the Regex Eng
 ```
 [X] Match Start
 [X] Match End
+```
+
+## Code Generation of Deterministic Finite State Automatata
+
+Each NFA will be translated into a DFA, and should support the same processing as the NFA (it should recognize the same language).
+
+```
+[ ] Character (outside a range or range complement)
+[ ] Escaped Character (outside a range or range complement)
+[ ] Union
+[ ] Concat
+[ ] Wildcard
+[ ] Plus
+[ ] Optional
+[ ] Range
+[ ] Range Complement
+```
+
+The following token types are used to help direct the operation of the Regex Engine, but are not part of the DFA and should be ignored if encountered:
+
+```
+[ ] Match Start
+[ ] Match End
 ```
 
 ## Appendix

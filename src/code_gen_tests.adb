@@ -5,6 +5,7 @@ with Parser; use Parser;
 with Parse_Types; use Parse_Types; use Parse_Types.Token_Vector; use Parse_Types.Regex_AST;
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Characters.Latin_1; use Ada.Characters.Latin_1;
+with Code_Gen_Types; use Code_Gen_Types;
 
 
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
