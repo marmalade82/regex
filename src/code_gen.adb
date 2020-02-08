@@ -228,8 +228,36 @@ package body Code_Gen is
       Iterate(The_Machine.states, Accumulate'Access);
       return My_Count;
    end Count_Epsilon_Transitions;
+   
+   
+   function Gen_DFA(The_AST: Tree) return DFA is 
+      
+   begin
+      return (
+              start => 0
+              );
+   end Gen_DFA;
 
+   function Recognize(The_Machine: DFA; The_Input: Unbounded_String) return Boolean is 
+      
+   begin 
+      return True;
+   end Recognize;
+   
+   
+   function Count_State(The_Machine: DFA) return Natural is
+      
+   begin 
+      return 0;
+   end Count_State;
+   
+   function Count_Epsilon_Transitions(The_Machine: DFA) return Natural is 
+      
+   begin 
+      return 0;
+   end Count_Epsilon_Transitions;
 
+   
    
 
 end Code_Gen;

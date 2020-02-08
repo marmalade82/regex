@@ -10,10 +10,10 @@ with Code_Gen_Types; use Code_Gen_Types;
 
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 
-package body Code_Gen_Tests is
-   function Name (T : Code_Gen_Test) return Test_String is 
+package body Code_Gen_NFA_Tests is
+   function Name (T : Code_Gen_NFA_Test) return Test_String is 
    begin
-      return Format("Code Gen Tests");
+      return Format("Code Gen Tests for NFA");
    end Name;
    
    procedure Test_Gen_Char(T : in out Test_Case'Class) is 
@@ -794,7 +794,7 @@ package body Code_Gen_Tests is
       Assert(Count_State(v_machine) = 2, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
    end Test_Gen_Range_Escape_Characters;
    
-   procedure Register_Tests(T: in out Code_Gen_Test) is 
+   procedure Register_Tests(T: in out Code_Gen_NFA_Test) is 
       use AUnit.Test_Cases.Registration;
    begin
       Register_Routine(T, Test_Gen_Char'Access, "Processes a single char");
@@ -834,4 +834,4 @@ package body Code_Gen_Tests is
       
    end Register_Tests;
 
-end Code_Gen_Tests;
+end Code_Gen_NFA_Tests;

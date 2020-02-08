@@ -11,11 +11,19 @@ package Code_Gen is
      
    function Gen_NFA(The_AST: Tree) return NFA;
    
+   function Gen_DFA(The_AST: Tree) return DFA;
+   
    function Count_State(The_Machine: NFA) return Natural;
    
    function Count_Epsilon_Transitions(The_Machine: NFA) return Natural;
    
    function Recognize(The_Machine: NFA; The_Input: Unbounded_String) return Boolean;
+   
+   function Recognize(The_Machine: DFA; The_Input: Unbounded_String) return Boolean;
+   
+   function Count_State(The_Machine: DFA) return Natural;
+   
+   function Count_Epsilon_Transitions(The_Machine: DFA) return Natural;
    
    subtype Escape_Characters is Abstract_Syntax_Class with 
      Static_Predicate => Escape_Characters in Newline | Tab | Carriage_Return;

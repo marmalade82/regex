@@ -61,5 +61,9 @@ package Code_Gen_Types is
    function Empty_Transitions return Transitions;
    
    function Join(The_First : State_Transitions.Vector; The_Second: State_Transitions.Vector) return State_Transitions.Vector;
+   
+   type DFA is record 
+      start: Natural;
+   end record;
 
 end Code_Gen_Types;
