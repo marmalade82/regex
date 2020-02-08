@@ -407,13 +407,13 @@ package body parser is
                -- the RangeGroup itself.
                Attach_All_Children(v_expr_cursor, v_range_tree, v_range_cursor);
                Pass_Up_Parse_Results(v_position, p_position, v_range_tree, p_tree, p_cursor);
-            when Range_Interval | Parse_Types.Character => 
+            when Range_Interval | Parse_Types.Character | Escape_Characters => 
                -- If we only get one thing back, then we can just 
                -- attach the one thing to the range group
                Attach_Rightmost_Subtree(v_range_tree, v_range_cursor, v_expr_cursor);
                Pass_Up_Parse_Results(v_position, p_position, v_range_tree, p_tree, p_cursor);
             when others =>
-               raise Unexpected_Token with "Unexpected token: " & 
+               raise Unexpected_Token with "Unexpected token in range complement: " & 
                     To_String(Element(v_expr_cursor).f_lexeme);
          end case;
  

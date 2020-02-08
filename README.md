@@ -9,8 +9,14 @@ This repository implements a simple lexical analyzer, parser, and code generator
 There are two parsers planned for this compiler. The first will use a simple recursive descent parsing algorithm, while the second will use some bottom-up parsing algorithm. The following are the planned features for both parsers:
 
 - [ ] Complete parsing of the grammar given below (see following subsection).
+    - [X] Recursive Descent
+    - [ ] Bottom-Up
 - [ ] Perform error recovery and continue parsing where possible.
+    - [ ] Recursive Descent
+    - [ ] Bottom-Up
 - [ ] Parse common syntax errors and provide friendly error messages.
+    - [ ] Recursive Descent
+    - [ ] Bottom-Up
 
 ### Grammar
 
@@ -82,7 +88,7 @@ The following token types are used to help generate an NFA, but in and of themse
 ```
 [X] Range Interval
 [X] Character (within a range or range complement)
-[ ] Escaped Character (within a range or range complement)
+[X] Escaped Character (within a range or range complement)
 ```
 
 The following token types are used to help direct the operation of the Regex Engine, but are not part of the NFA and should be ignored if encountered:
