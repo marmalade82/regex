@@ -237,7 +237,7 @@ package body Code_Gen_DFA_Tests is
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
-      Assert(Count_State(v_machine) = 4, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Count_State(v_machine) = 3, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("ab")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("ba")), "Fails to reject unintended string");
    end Test_Gen_Concat;
