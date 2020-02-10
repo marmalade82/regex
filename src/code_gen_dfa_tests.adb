@@ -369,7 +369,7 @@ package body Code_Gen_DFA_Tests is
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
       -- 10 from the character DFAs, and 2 from the unions
-      Assert(Count_State(v_machine) = 12, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Count_State(v_machine) = 6, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("ab")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("c")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("de")), "Does not recognize the intended string");
@@ -806,7 +806,7 @@ package body Code_Gen_DFA_Tests is
       Register_Routine(T, Test_Gen_Multi_Union'Access, "Processes multiple union");
       Register_Routine(T, Test_Gen_Mix_Union_Concat'Access, "Processes union then concat");
       Register_Routine(T, Test_Gen_Mix_Concat_Union'Access, "Processes concat then union");
-      --Register_Routine(T, Test_Gen_Multi_Concat_Union'Access, "Processes multiple mixed concats and unions");
+      Register_Routine(T, Test_Gen_Multi_Concat_Union'Access, "Processes multiple mixed concats and unions");
       --Register_Routine(T, Test_Gen_Simple_Range'Access, "Processes a simple range of one character");
       --Register_Routine(T, Test_Gen_Multi_Char_Range'Access, "Processes a range of multiple single characters");
       --Register_Routine(T, Test_Gen_Simple_Complement'Access, "Processes a simple range complement of one character");
