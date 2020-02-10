@@ -39,6 +39,17 @@ package body Code_Gen_Types is
       return To_String(My_Str);
    end As_String;
    
+   function As_String(The_Input_Transitions: NFA_Input_Transitions.Map) return String is 
+      My_Str : Unbounded_String := To_Unbounded_String("");
+      procedure Accumulate(The_Position : NFA_Input_Transitions.Cursor) is 
+      begin
+         My_Str := My_Str & Key(The_Position) & "->" & As_String(Element(The_Position)) & " ";
+      end Accumulate;
+   begin 
+      Iterate(The_Input_Transitions, Accumulate'Access);
+      return To_String(My_Str);
+   end As_String;
+      
    function Empty_Transitions return Transitions is 
       
    begin
@@ -76,8 +87,8 @@ package body Code_Gen_Types is
       My_Success := not DFA_States_Queue.Is_Empty(The_Queue);
       
       if My_Success then
-         The_Element := DFA_States_Queue.First_Element(The_Queue);
-         DFA_States_Queue.Delete_First(The_Queue);
+         The_Element := DFA_States_Queue.Last_Element(The_Queue);
+         DFA_States_Queue.Delete_Last(The_Queue);
       end if;
       
       return My_Success;

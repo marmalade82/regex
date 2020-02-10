@@ -257,6 +257,7 @@ package body Code_Gen is
             My_Current_State := DFA_Input_Transitions.Element(My_Current_Transitions.input_transitions, My_Input);
          else 
             -- IF we couldn't find the transition, we failed to process all the input.
+            Put_Line("Couldn't find next transition, failed at state " & My_Current_State'Image & " with input " & My_Input);
             return False;
          end if;
       end loop;

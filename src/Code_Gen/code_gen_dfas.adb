@@ -157,7 +157,9 @@ package body Code_Gen_DFAs is
    begin 
       My_State_Number := 0; -- initially the last known state number is 0, since the queue starts with one thing in it.
       while Dequeue(The_States_Queue, My_State) loop
+         Put_Line("dequeued: " & As_String(My_State.state) & ", which is state " & My_State.number'Image);
          My_Input_Transitions := Build_Transitions_For_A_State(My_State.state, The_NFA.states);
+         Put_Line("transitions : " & As_String(My_Input_Transitions));
             
          -- At this point, for the given DFA state we just dequeued, we have 
          -- built a giant map from each inputs to the set of all NFA states that we could reach
@@ -165,7 +167,8 @@ package body Code_Gen_DFAs is
          -- new state in the queue, and convert the map into a DFA transition map
             
          -- This line may or may not add more states to the queue.
-         -- It will also add to the set of DFA accepting states.
+         -- It will also add to the set of DFA accepting states and increment the My_State_Number based on 
+         -- how many additional states were added.
          My_DFA_Transitions := Build_DFA_Transitions
            (My_Input_Transitions, 
             My_State_Number, 
@@ -216,6 +219,7 @@ package body Code_Gen_DFAs is
       -- The first state of the DFA corresponds to the epsilon closure of the start states of 
       -- the NFA.
       My_Start_State := Get_Epsilon_Closure( NFA_States.To_Set(The_NFA.start), The_NFA.states);
+      Put_Line("start state: " & As_String(My_Start_State));
       
       Enqueue(My_Queue, ( number => My_State_Number, state => My_Start_State));
       
@@ -236,6 +240,7 @@ package body Code_Gen_DFAs is
       --    the next set based on the input PLUS epsilon transitions.
       
       My_Conversion := DFA_States_From_NFA(The_NFA);
+      Put_Line("accepting states are " & As_String(My_Conversion.accepting));
       return (
               start => 0,
               states => My_Conversion.states,

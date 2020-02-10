@@ -317,6 +317,7 @@ package body Code_Gen_DFA_Tests is
       v_tree: Tree;
       v_success : Boolean;
    begin
+      Put_Line("starting union then concat");
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
@@ -338,6 +339,7 @@ package body Code_Gen_DFA_Tests is
       v_tree: Tree;
       v_success : Boolean;
    begin
+      Put_Line("starting concat then union");
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
@@ -362,6 +364,7 @@ package body Code_Gen_DFA_Tests is
       v_tree: Tree;
       v_success : Boolean;
    begin
+      Put_Line("starting multi mix concat union");
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);

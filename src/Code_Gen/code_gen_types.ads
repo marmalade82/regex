@@ -59,6 +59,8 @@ package Code_Gen_Types is
    
    function As_String(The_States: NFA_States.Set) return String;
    
+   function As_String(The_Input_Transitions: NFA_Input_Transitions.Map) return String;
+   
    function Empty_Transitions return Transitions;
    
    function Join(The_First : State_Transitions.Vector; The_Second: State_Transitions.Vector) return State_Transitions.Vector;
