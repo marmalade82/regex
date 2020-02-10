@@ -21,4 +21,7 @@ package Code_Gen_NFAs is
    function Make_Complement_NFA(The_Parent: Regex_AST.Cursor) return NFA;
    
    function Recognize(The_Machine: NFA; The_Input: Unbounded_String) return Boolean;
+   
+   function Get_Epsilon_Closure(The_Current_States: NFA_States.Set; The_State_Table: State_Transitions.Vector) return NFA_States.Set;
+
 end Code_Gen_NFAs;

@@ -58,5 +58,30 @@ package body Code_Gen_Types is
       Append(My_Vector, The_Second);
       return My_Vector;
    end Join;
+   
+   function "=" (The_Left, The_Right : DFA_State ) return Boolean is 
+   begin 
+      return The_Left.number = The_Right.number and then The_Left.state = The_Right.state;
+   end "=";
+   
+   procedure Enqueue(The_Queue : in out DFA_States_Queue.List; The_Element : DFA_State) is 
+   
+   begin
+      DFA_States_Queue.Prepend(The_Queue, The_Element, 1);
+   end Enqueue;
+   
+   function Dequeue(The_Queue: in out DFA_States_Queue.List; The_Element : out DFA_State) return Boolean is 
+      My_Success : Boolean;
+   begin
+      My_Success := not DFA_States_Queue.Is_Empty(The_Queue);
+      
+      if My_Success then
+         The_Element := DFA_States_Queue.First_Element(The_Queue);
+         DFA_States_Queue.Delete_First(The_Queue);
+      end if;
+      
+      return My_Success;
+   end Dequeue;
+
 
 end Code_Gen_Types;

@@ -6,6 +6,7 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Characters.Handling; use Ada.Characters.Handling;
 with Ada.Characters.Latin_1; use Ada.Characters.Latin_1;
 with Code_Gen_NFAs; use Code_Gen_NFAs;
+with Code_Gen_DFAs; use Code_Gen_DFAs;
 
 
 package body Code_Gen is
@@ -231,24 +232,45 @@ package body Code_Gen is
    
    
    function Gen_DFA(The_AST: Tree) return DFA is 
-      
+      My_NFA : NFA;
    begin
-      return (
-              start => 0
-              );
+      My_NFA := Gen_NFA(The_AST);
+      
+      return NFA_To_DFA(My_NFA);
+      
    end Gen_DFA;
 
    function Recognize(The_Machine: DFA; The_Input: Unbounded_String) return Boolean is 
-      
+      use DFA_Input_Transitions;
+      My_Current_State : Natural;
+      My_Current_Transitions : DFA_Transitions;
+      My_Input : Character;
    begin 
-      return True;
+      -- Operating a DFA is simple. We loop over the input and try to match as long as we can
+      My_Current_State := The_Machine.start;
+      
+      for I in 1..Length(The_Input) loop
+         My_Input := Ada.Strings.Unbounded.Element(The_Input, I);
+         My_Current_Transitions := DFA_States.Element(The_Machine.states, My_Current_State);
+         
+         if DFA_Input_Transitions.Find(My_Current_Transitions.input_transitions, My_Input) /= DFA_Input_Transitions.No_Element then 
+            My_Current_State := DFA_Input_Transitions.Element(My_Current_Transitions.input_transitions, My_Input);
+         else 
+            -- IF we couldn't find the transition, we failed to process all the input.
+            return False;
+         end if;
+      end loop;
+      
+      -- If we processed all the input, we need to make sure that our final state is an accepting state.
+      
+      return Contains(The_Machine.accepting, My_Current_State);
    end Recognize;
    
    
    function Count_State(The_Machine: DFA) return Natural is
       
    begin 
-      return 0;
+      return Natural( DFA_States.Length(The_Machine.states) );
    end Count_State;
    
    function Count_Epsilon_Transitions(The_Machine: DFA) return Natural is 

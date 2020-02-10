@@ -2,6 +2,7 @@ with Ada.Containers;
 with Ada.Containers.Vectors;
 with Ada.Containers.Hashed_Maps;
 with Ada.Containers.Hashed_Sets;
+with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 
 package Code_Gen_Types is
@@ -62,8 +63,45 @@ package Code_Gen_Types is
    
    function Join(The_First : State_Transitions.Vector; The_Second: State_Transitions.Vector) return State_Transitions.Vector;
    
+   package DFA_Input_Transitions is new Ada.Containers.Hashed_Maps
+     ( Key_Type => Character,
+       Hash => Charac_Hash,
+       Element_Type => Natural,
+       Equivalent_Keys => Standard."="
+      );
+   
+   type DFA_Transitions is record 
+      input_transitions : DFA_Input_Transitions.Map;
+   end record;
+   
+   package DFA_States is new Ada.Containers.Vectors
+     (Index_Type => Natural,
+      Element_Type => DFA_Transitions
+      );
+   
    type DFA is record 
       start: Natural;
+      states : DFA_States.Vector;
+      accepting : NFA_States.Set; -- Just like NFAs, DFAs have a set of accepting states.
    end record;
+  
+   type DFA_State is record 
+      number: Natural;
+      state: NFA_States.Set;
+   end record;
+   
+   function "=" (The_Left, The_Right : DFA_State ) return Boolean;
+   
+   -- This allows queues of DFA states (which remember, are sets of NFA states)
+   --   during processing.
+   package DFA_States_Queue is new Ada.Containers.Doubly_Linked_Lists
+     ( Element_Type => DFA_State,
+       "=" => "="
+      );
+   
+   procedure Enqueue(The_Queue : in out DFA_States_Queue.List; The_Element : DFA_State);
+   
+   function Dequeue(The_Queue: in out DFA_States_Queue.List; The_Element : out DFA_State) return Boolean;
+     
 
 end Code_Gen_Types;

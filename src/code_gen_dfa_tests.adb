@@ -798,7 +798,7 @@ package body Code_Gen_DFA_Tests is
       use AUnit.Test_Cases.Registration;
    begin
       Register_Routine(T, Test_Gen_Char'Access, "Processes a single char");
-      --Register_Routine(T, Test_Gen_Concat'Access, "Processes a single concatenation");
+      Register_Routine(T, Test_Gen_Concat'Access, "Processes a single concatenation");
       --Register_Routine(T, Test_Gen_Multi_Concat'Access, "Processes multiple concatenation");
       --Register_Routine(T, Test_Gen_Union'Access, "Processes a single union");
       --Register_Routine(T, Test_Gen_Multi_Union'Access, "Processes multiple union");
