@@ -256,8 +256,7 @@ package body Code_Gen_DFA_Tests is
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
-      Assert(Count_State(v_machine) = 8, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
-      Assert(Count_Epsilon_Transitions(v_machine) = 3, "Generates incorrect number of epsilon transitions");
+      Assert(Count_State(v_machine) = 5, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("abcd")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("abcc")), "Fails to reject unintended string");
    end Test_Gen_Multi_Concat;
@@ -275,7 +274,7 @@ package body Code_Gen_DFA_Tests is
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
-      Assert(Count_State(v_machine) = 5, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Count_State(v_machine) = 3, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("b")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("c")), "Fails to reject unintended string");
@@ -299,7 +298,7 @@ package body Code_Gen_DFA_Tests is
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
       -- 8 from the four character DFAs, and 3 from the three unions' new starts
-      Assert(Count_State(v_machine) = 11, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Count_State(v_machine) = 5, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("b")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("c")), "Does not recognize the intended string");
@@ -322,7 +321,7 @@ package body Code_Gen_DFA_Tests is
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
       -- 6 from the character DFAs, and one from the union
-      Assert(Count_State(v_machine) = 7, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Count_State(v_machine) = 4, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("bc")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("ac")), "Fails to reject unintended string");
@@ -343,9 +342,9 @@ package body Code_Gen_DFA_Tests is
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
       -- 6 from the character DFAs, and one from the union
-      Assert(Count_State(v_machine) = 7, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
-      Assert(Recognize(v_machine, To_Unbounded_String("ab")), "Does not recognize the intended string");
+      Assert(Count_State(v_machine) = 4, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("c")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("ab")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("ac")), "Fails to reject unintended string");
    end Test_Gen_Mix_Concat_Union;
    
@@ -799,11 +798,11 @@ package body Code_Gen_DFA_Tests is
    begin
       Register_Routine(T, Test_Gen_Char'Access, "Processes a single char");
       Register_Routine(T, Test_Gen_Concat'Access, "Processes a single concatenation");
-      --Register_Routine(T, Test_Gen_Multi_Concat'Access, "Processes multiple concatenation");
-      --Register_Routine(T, Test_Gen_Union'Access, "Processes a single union");
-      --Register_Routine(T, Test_Gen_Multi_Union'Access, "Processes multiple union");
-      --Register_Routine(T, Test_Gen_Mix_Union_Concat'Access, "Processes union then concat");
-      --Register_Routine(T, Test_Gen_Mix_Concat_Union'Access, "Processes concat then union");
+      Register_Routine(T, Test_Gen_Multi_Concat'Access, "Processes multiple concatenation");
+      Register_Routine(T, Test_Gen_Union'Access, "Processes a single union");
+      Register_Routine(T, Test_Gen_Multi_Union'Access, "Processes multiple union");
+      Register_Routine(T, Test_Gen_Mix_Union_Concat'Access, "Processes union then concat");
+      Register_Routine(T, Test_Gen_Mix_Concat_Union'Access, "Processes concat then union");
       --Register_Routine(T, Test_Gen_Multi_Concat_Union'Access, "Processes multiple mixed concats and unions");
       --Register_Routine(T, Test_Gen_Simple_Range'Access, "Processes a simple range of one character");
       --Register_Routine(T, Test_Gen_Multi_Char_Range'Access, "Processes a range of multiple single characters");
