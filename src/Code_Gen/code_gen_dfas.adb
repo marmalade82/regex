@@ -1,6 +1,7 @@
 with Ada.Containers.Vectors;
 with Ada.Containers.Hashed_Maps;
 with Ada.Strings.Hash;
+with Ada.Containers.Vectors;
 with Parser;
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Characters.Handling; use Ada.Characters.Handling;
@@ -95,12 +96,29 @@ package body Code_Gen_DFAs is
       return My_Input_Transitions;
    end Convert_Range_Transitions;
    
+   type NFA_Range_Complement is record 
+      complement: Inputs.Set;
+      destinations: NFA_States.Set;
+   end record;
+   
+   package NFA_Range_Complements is new Ada.Containers.Vectors
+        ( Index_Type => Natural,
+          Element_Type => NFA_Range_Complement
+         );
+   
+   type Transitions_For_State is record 
+      input_transitions : NFA_Input_Transitions.Map;
+      range_complements: NFA_Range_Complements.Vector;
+   end record;
+   
+   
    function Build_Transitions_For_A_State
      (DFA_State : NFA_States.Set; 
       The_NFA_State_Table : State_Transitions.Vector) 
-      return NFA_Input_Transitions.Map is
+      return Transitions_For_State is
       
       My_Input_Transitions: NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
+      My_Range_Complements: NFA_Range_Complements.Vector := NFA_Range_Complements.Empty_Vector;
       
       procedure Build_Transition(The_Position : NFA_States.Cursor) is
          My_NFA_State : Natural;
@@ -119,7 +137,12 @@ package body Code_Gen_DFAs is
                  Merge(My_Input_Transitions, 
                        Build_Input_Transitions(My_Range_Transitions, The_NFA_State_Table));
             when By_Range_Complement =>
-               null;
+               NFA_Range_Complements.Append
+                 ( My_Range_Complements, 
+                   ( complement => My_Transitions.range_inputs, 
+                     destinations => Get_Epsilon_Closure(My_Transitions.range_states, The_NFA_State_Table)
+                    )
+                  );
          end case;
            
             
@@ -129,11 +152,13 @@ package body Code_Gen_DFAs is
    begin
       Iterate(DFA_State, Build_Transition'Access);
       
-      return My_Input_Transitions; 
+      return ( input_transitions => My_Input_Transitions,
+               range_complements => My_Range_Complements
+              );
    end Build_Transitions_For_A_State;
    
    function Build_DFA_Transitions
-     (The_NFA_Transitions : NFA_Input_Transitions.Map; 
+     (The_NFA_Transitions : Transitions_For_State; 
       The_Last_Used_State_Number: in out Natural;
       The_NFA_Accepting : NFA_States.Set;
       The_DFA_Accepting : in out NFA_States.Set;
@@ -164,11 +189,40 @@ package body Code_Gen_DFAs is
       end Build_Transitions;
    begin 
       My_State_Number := The_Last_Used_State_Number;
-      Iterate(The_NFA_Transitions, Build_Transitions'Access);
+      Iterate(The_NFA_Transitions.input_transitions, Build_Transitions'Access);
       The_Last_Used_State_Number := My_State_Number;
       
       return My_DFA_Transitions; 
    end Build_DFA_Transitions;
+   
+   type Complement_Conversion is record
+      input_transitions : NFA_Input_Transitions.Map;
+      complement_transitions: NFA_States.Set;
+   end record;
+   
+   function Convert_Complement(The_Transitions : Transitions_For_State) return Complement_Conversion is 
+      My_Input_Transitions : NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
+      My_Complement_Transitions : NFA_States.Set := NFA_States.Empty_Set;
+      procedure Process_Complements(The_Position : NFA_Range_Complements.Cursor) is 
+         My_Complement: NFA_Range_Complement;
+      begin
+         My_Complement := NFA_Range_Complements.Element(The_Position);
+         
+      end Process_Complements;
+   begin 
+      -- For each complement, we examine each complement state in turn. For each of the other complements, if this input
+      -- isn't in the other complement, the other complement's epsilon closure gets merged into the input map.
+      -- This continues until all the states in the complement have been processed. Once this is done, we know
+      -- exactly where each of the inputs that are part of the complements will lead. Then, any input that iS NOT
+      -- recognized by the input map must go to the union of all the complements' epsilon closures, which is its 
+      -- own separate state.
+      
+      NFA_Range_Complements.Iterate(The_Transitions.range_complements, Process_Complements'Access);
+      
+      return ( input_transitions => My_Input_Transitions,
+               complement_transitions => My_Complement_Transitions
+              );
+   end Convert_Complement;
    
    function Build_DFA_States
      (The_States_Queue: in out DFA_States_Queue.List;
@@ -181,12 +235,14 @@ package body Code_Gen_DFAs is
       My_DFA_Transitions : DFA_Input_Transitions.Map := DFA_Input_Transitions.Empty_Map;
       My_State_Number : Natural;
       My_Accepting : NFA_States.Set := NFA_States.Empty_Set;
-      
+      My_NFA_Transitions : Transitions_For_State;
+      My_NFA_Complement_Conversion : Complement_Conversion;
    begin 
       My_State_Number := 0; -- initially the last known state number is 0, since the queue starts with one thing in it.
       while Dequeue(The_States_Queue, My_State) loop
          Put_Line("dequeued: " & As_String(My_State.state) & ", which is state " & My_State.number'Image);
-         My_Input_Transitions := Build_Transitions_For_A_State(My_State.state, The_NFA.states);
+         My_NFA_Transitions := Build_Transitions_For_A_State(My_State.state, The_NFA.states);
+         My_Input_Transitions := My_NFA_Transitions.input_transitions;
          Put_Line("transitions : " & As_String(My_Input_Transitions));
             
          -- At this point, for the given DFA state we just dequeued, we have 
@@ -202,23 +258,45 @@ package body Code_Gen_DFAs is
          -- But we don't want to waste precious memory space by tossing the entire unicode character
          -- set into an input transitions table (although we could, the unicode character space is at present 137,000
          -- characters, so at least 100 KB per range in the regex, which seems a terrible waste). But remember that we 
-         -- only process one DFA state at a time. Theoretically, if one or more range state machine were in the set 
+         -- only process one DFA state at a time. Theoretically, if one or more complement state machine were in the set 
          -- of NFA states, we could store it and the states it went to -- but separately from the regular input
          -- transitions. Then the question would be how to combine the range transitions and the input transitions.
-         -- Take the example above. The initial DFA state consists of the states at the start of ab, [^c]d, and [^d]g.
-         --   On input a, we we would like to go to a set of states at the start of b, d, and g
-         --   On input c, we could like to go to a set of states at the start of g
-         --   On input d, we would like to go to a set of states at the start of d
-         --   On input z, we would like to to to a set of states at the start of d and g.
+         -- Take the example above. The initial DFA state consists of the states at the start of ab, [^c]d, [^d]i, [^e]g.
+         --   On input a, we we would like to go to a set of states at the start of b, d, i, and g
+         --   On input c, we could like to go to a set of states at the start of i and g
+         --   On input d, we would like to go to a set of states at the start of d and g
+         --   On input e, we would like to go to a set of states at the start of d and i
+         --   On input z, we would like to to to a set of states at the start of d, i, and g.
+         -- Presumably, after processing from the initial state, we would have the following:
+         --   A map with one entry, from "a" to the epsilon closure of consuming the "a" input.
+         --   A vector with two entries, 
+         --       one containing c and the epsilon closure of consuming anything but c;
+         --       one containing d and the epsilon closure of consuming anything but d;
+         -- For every input in the map, we check whether the input is in any of the vector entries. If NOT,
+         -- we merge the vector entry's epsilon closure into the input map (This means that if the input
+         -- is in the input map, we don't need to consider whether the input is missing from the complements). 
+         --
+         -- Then we take the union of all the complements' epsilon closures. We'll use this later.
+         -- 
+         -- For each complement, we examine each input in turn. For each of the other complements, if this input
+         -- isn't in the other complement, the other complement's epsilon closure gets merged into the input map.
+         -- This continues until all the inputs in the complement have been processed. Once this is done, we know
+         -- exactly where each of the inputs that are part of the complements will lead. Then, any input that iS NOT
+         -- recognized by the input map must go to the union of all the complements' epsilon closures, which is its 
+         -- own separate state.
+         --
          --
          -- We now need to iterate over this map, and insert element each as a 
          -- new state in the queue, and convert the map into a DFA transition map
             
+         
+         My_NFA_Complement_Conversion := Convert_Complement(My_NFA_Transitions);
+         
          -- This line may or may not add more states to the queue.
          -- It will also add to the set of DFA accepting states and increment the My_State_Number based on 
          -- how many additional states were added.
          My_DFA_Transitions := Build_DFA_Transitions
-           (My_Input_Transitions, 
+           (My_NFA_Transitions, 
             My_State_Number, 
             The_NFA.accepting, 
             My_Accepting, 
@@ -226,7 +304,13 @@ package body Code_Gen_DFAs is
            );            
             
          -- Once we have the DFA transition map, we can finally insert the DFA map into the DFA states table.
-         DFA_States.Append(My_DFA_States, ( input_transitions => My_DFA_Transitions));
+         DFA_States.Append
+           (My_DFA_States, 
+            ( input_transitions => My_DFA_Transitions,
+              has_complement => False,
+              complement_transition => 0
+             )
+           );
                   
          -- During DFA generation from an NFA, how do make sure that we see each state once,
          -- and only once. For example, a wildcard involves looping back on itself, and can always
