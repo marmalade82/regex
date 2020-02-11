@@ -157,8 +157,156 @@ package body Code_Gen_DFAs is
               );
    end Build_Transitions_For_A_State;
    
+   type Complement_Conversion is record
+      input_transitions : NFA_Input_Transitions.Map;
+      complement_inputs : Inputs.Set;
+      complement_transitions: NFA_States.Set;
+   end record;
+   
+   function Merge_Inputs(The_Complements : NFA_Range_Complements.Vector) return Inputs.Set is 
+      My_Set : Inputs.Set := Inputs.Empty_Set;
+         
+      procedure Build_Set(The_Position : NFA_Range_Complements.Cursor) is 
+         My_Complement : NFA_Range_Complement;
+      begin 
+         My_Complement := NFA_Range_Complements.Element(The_Position);
+         Inputs.Union(My_Set, My_Complement.complement);
+      end Build_Set;
+   begin 
+      NFA_Range_Complements.Iterate(The_Complements, Build_Set'Access);
+      return My_Set;
+   end Merge_Inputs;
+   
+   -- given a set of complements, this function maps each element of each complement to the states
+   -- it should go to afterward
+   function Generate_Complement_Map(The_Complements: NFA_Range_Complements.Vector) return NFA_Input_Transitions.Map is
+      My_Total_Inputs : Inputs.Set := Inputs.Empty_Set;
+      My_Complement_Map : NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
+      
+      function Gen_Map(The_Inputs : Inputs.Set; The_States : NFA_States.Set) return NFA_Input_Transitions.Map is 
+         My_Map : NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
+         
+         procedure Add_Input(The_Position : Inputs.Cursor) is 
+            My_Input : Character;
+         begin
+            My_Input := Inputs.Element(The_Position);
+            NFA_Input_Transitions.Insert(My_Map, My_Input, The_States);
+         end Add_Input;
+      begin 
+         Inputs.Iterate(The_Inputs, Add_Input'Access);
+         
+         return My_Map;
+      end Gen_Map;
+      
+      procedure Build_Map(The_Position: NFA_Range_Complements.Cursor) is 
+         My_Complement : NFA_Range_Complement;
+         My_Excluded_Inputs : Inputs.Set := Inputs.Empty_Set;
+      begin 
+         My_Complement := NFA_Range_Complements.Element(The_Position);
+         
+         -- We check which inputs are not in the current complement.
+         -- For these inputs, we should go to the destination of the current complement. Makes sense, right?
+         My_Excluded_Inputs := Inputs.Difference(My_Total_Inputs, My_Complement.complement);
+         My_Complement_Map := Merge(My_Complement_Map, Gen_Map(My_Excluded_Inputs, My_Complement.destinations));
+         
+      end Build_Map;
+   begin
+      My_Total_Inputs := Merge_Inputs(The_Complements);
+      
+      NFA_Range_Complements.Iterate(The_Complements, Build_Map'Access);
+      
+      -- We return a map showing how all the known inputs where one of the inputs is part of one of 
+      -- the complement descriptions, goes to a new state.
+      return My_Complement_Map;
+   end Generate_Complement_Map;
+   
+   -- Returns a set of NFA states: the union of all the complement destinations.
+   function Generate_Complement_Transitions(The_Complements : NFA_Range_Complements.Vector) return NFA_States.Set is 
+      My_Transitions : NFA_States.Set := NFA_States.Empty_Set;
+      procedure Build_Transition(The_Position: NFA_Range_Complements.Cursor) is 
+         My_Complement : NFA_Range_Complement;
+      begin 
+         My_Complement := NFA_Range_Complements.Element(The_Position);
+         NFA_States.Union(My_Transitions, My_Complement.destinations);
+      end Build_Transition;
+   begin 
+      NFA_Range_Complements.Iterate(The_Complements, Build_Transition'Access);
+      return My_Transitions;
+   end Generate_Complement_Transitions;
+   
+   -- For each input transition, if the input is missing from a complement,
+   -- the complement's destinations are added to the input transition.
+   function Add_Complement_Destinations
+     (The_Input_Transitions : NFA_Input_Transitions.Map;
+      The_Complements : NFA_Range_Complements.Vector) return NFA_Input_Transitions.Map is
+      
+      My_Map : NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
+      procedure Check_Complements(The_Position: NFA_Input_Transitions.Cursor) is 
+         use NFA_Input_Transitions;
+         My_Input : Character;
+         procedure Add_To_Map(The_Position: NFA_Range_Complements.Cursor) is 
+            My_Complement: NFA_Range_Complement;
+            My_Replacement : NFA_States.Set;
+            My_Position : NFA_Input_Transitions.Cursor;
+         begin 
+            My_Complement := NFA_Range_Complements.Element(The_Position);
+            
+            if not Inputs.Contains(My_Complement.complement, My_Input) then 
+               My_Position := Find(My_Map, My_Input);
+               if My_Position = NFA_Input_Transitions.No_Element then 
+                  Insert(My_Map, My_Input, My_Complement.destinations);
+               else 
+                  My_Replacement := NFA_States.Union(My_Complement.destinations, Element(My_Position));
+                  NFA_Input_Transitions.Replace_Element(My_Map, My_Position, My_Replacement);
+               end if;
+            end if;
+         end Add_To_Map;
+      begin
+         My_Input := NFA_Input_Transitions.Key(The_Position);
+         
+         NFA_Range_Complements.Iterate(The_Complements, Add_To_Map'Access);
+      end Check_Complements;
+   begin
+      NFA_Input_Transitions.Iterate(The_Input_Transitions, Check_Complements'Access);
+      return Merge(The_Input_Transitions, My_Map);
+   end Add_Complement_Destinations;
+   
+   function Convert_Complement(The_Transitions : Transitions_For_State) return Complement_Conversion is 
+      My_Input_Transitions : NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
+      My_Complement_Transitions : NFA_States.Set := NFA_States.Empty_Set;
+      My_Complement_Input_Map : NFA_Input_Transitions.Map;
+   begin 
+      
+      -- 
+      -- For each complement, we examine each complement state in turn. For each of the other complements, if this input
+      -- isn't in the other complement, the other complement's epsilon closure gets merged into the input map.
+      -- This continues until all the states in the complement have been processed. Once this is done, we know
+      -- exactly where each of the inputs that are part of the complements will lead. Then, any input that iS NOT
+      -- recognized by the input map must go to the union of all the complements' epsilon closures, which is its 
+      -- own separate state.
+      My_Complement_Input_Map := Generate_Complement_Map(The_Transitions.range_complements);
+      
+      -- For each input in the input transitions, we check if it is missing from any of the complements. If it is,
+      -- we add the complements destinations for that input.
+      My_Input_Transitions := Merge
+        (My_Complement_Input_Map, 
+         Add_Complement_Destinations
+           (The_Transitions.input_transitions, The_Transitions.range_complements
+           )
+        );
+      
+      -- We also need to include the union of all the complements' destinations, in case none of the inputs
+      -- match what is in the input transitions.
+      My_Complement_Transitions := Generate_Complement_Transitions(The_Transitions.range_complements);
+                
+      return ( input_transitions => My_Input_Transitions,
+               complement_inputs => Merge_Inputs(The_Transitions.range_complements),
+               complement_transitions => My_Complement_Transitions
+              );
+   end Convert_Complement;
+   
    function Build_DFA_Transitions
-     (The_NFA_Transitions : Transitions_For_State; 
+     (The_NFA_Transitions : Complement_Conversion; 
       The_Last_Used_State_Number: in out Natural;
       The_NFA_Accepting : NFA_States.Set;
       The_DFA_Accepting : in out NFA_States.Set;
@@ -189,40 +337,25 @@ package body Code_Gen_DFAs is
       end Build_Transitions;
    begin 
       My_State_Number := The_Last_Used_State_Number;
-      Iterate(The_NFA_Transitions.input_transitions, Build_Transitions'Access);
-      The_Last_Used_State_Number := My_State_Number;
       
+      -- For each input transition, assign a state number, queue it up, and update the accepting states.
+      Iterate(The_NFA_Transitions.input_transitions, Build_Transitions'Access);
+      
+      -- Once we're done processing each input transition, we process the complement transitions, if any.
+      if not Is_Empty(The_NFA_Transitions.complement_transitions) then 
+         My_State_Number := My_State_Number + 1;
+         Enqueue(The_Queue, (number => My_State_Number, state => The_NFA_Transitions.complement_transitions));
+         
+         if not NFA_States.Is_Empty
+           ( NFA_States.Intersection
+               (The_NFA_Transitions.complement_transitions, The_NFA_Accepting) ) then
+            NFA_States.Insert(The_DFA_Accepting, My_State_Number);
+         end if;
+      end if;
+      
+      The_Last_Used_State_Number := My_State_Number;
       return My_DFA_Transitions; 
    end Build_DFA_Transitions;
-   
-   type Complement_Conversion is record
-      input_transitions : NFA_Input_Transitions.Map;
-      complement_transitions: NFA_States.Set;
-   end record;
-   
-   function Convert_Complement(The_Transitions : Transitions_For_State) return Complement_Conversion is 
-      My_Input_Transitions : NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
-      My_Complement_Transitions : NFA_States.Set := NFA_States.Empty_Set;
-      procedure Process_Complements(The_Position : NFA_Range_Complements.Cursor) is 
-         My_Complement: NFA_Range_Complement;
-      begin
-         My_Complement := NFA_Range_Complements.Element(The_Position);
-         
-      end Process_Complements;
-   begin 
-      -- For each complement, we examine each complement state in turn. For each of the other complements, if this input
-      -- isn't in the other complement, the other complement's epsilon closure gets merged into the input map.
-      -- This continues until all the states in the complement have been processed. Once this is done, we know
-      -- exactly where each of the inputs that are part of the complements will lead. Then, any input that iS NOT
-      -- recognized by the input map must go to the union of all the complements' epsilon closures, which is its 
-      -- own separate state.
-      
-      NFA_Range_Complements.Iterate(The_Transitions.range_complements, Process_Complements'Access);
-      
-      return ( input_transitions => My_Input_Transitions,
-               complement_transitions => My_Complement_Transitions
-              );
-   end Convert_Complement;
    
    function Build_DFA_States
      (The_States_Queue: in out DFA_States_Queue.List;
@@ -296,7 +429,7 @@ package body Code_Gen_DFAs is
          -- It will also add to the set of DFA accepting states and increment the My_State_Number based on 
          -- how many additional states were added.
          My_DFA_Transitions := Build_DFA_Transitions
-           (My_NFA_Transitions, 
+           (My_NFA_Complement_Conversion, 
             My_State_Number, 
             The_NFA.accepting, 
             My_Accepting, 
@@ -304,13 +437,25 @@ package body Code_Gen_DFAs is
            );            
             
          -- Once we have the DFA transition map, we can finally insert the DFA map into the DFA states table.
-         DFA_States.Append
-           (My_DFA_States, 
-            ( input_transitions => My_DFA_Transitions,
-              has_complement => False,
-              complement_transition => 0
-             )
-           );
+         if Is_Empty(My_NFA_Complement_Conversion.complement_transitions) then 
+            DFA_States.Append
+              (My_DFA_States, 
+               ( input_transitions => My_DFA_Transitions,
+                 has_complement => False,
+                 complement_inputs => Inputs.Empty_Set,
+                 complement_transition => 0
+                )
+              );
+         else 
+            DFA_States.Append
+              (My_DFA_States, 
+               ( input_transitions => My_DFA_Transitions,
+                 has_complement => True,
+                 complement_inputs => My_NFA_Complement_Conversion.complement_inputs,
+                 complement_transition => My_State_Number
+                )
+              );
+         end if;
                   
          -- During DFA generation from an NFA, how do make sure that we see each state once,
          -- and only once. For example, a wildcard involves looping back on itself, and can always

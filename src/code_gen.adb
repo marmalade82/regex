@@ -256,9 +256,14 @@ package body Code_Gen is
          if DFA_Input_Transitions.Find(My_Current_Transitions.input_transitions, My_Input) /= DFA_Input_Transitions.No_Element then 
             My_Current_State := DFA_Input_Transitions.Element(My_Current_Transitions.input_transitions, My_Input);
          else 
-            -- IF we couldn't find the transition, we failed to process all the input.
-            Put_Line("Couldn't find next transition, failed at state " & My_Current_State'Image & " with input " & My_Input);
-            return False;
+            -- IF we couldn't find the transition in the inputs, perhaps we can use a complement instead.
+            if My_Current_Transitions.has_complement and not Inputs.Contains(My_Current_Transitions.complement_inputs, My_Input) then 
+               My_Current_State := My_Current_Transitions.complement_transition;
+            else
+               Put_Line("Couldn't find next transition, failed at state " & My_Current_State'Image & " with input " & My_Input);
+               return False;
+            end if;
+            
          end if;
       end loop;
       

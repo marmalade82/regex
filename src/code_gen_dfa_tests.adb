@@ -537,10 +537,66 @@ package body Code_Gen_DFA_Tests is
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
-      Assert(Count_State(v_machine) = 4, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Count_State(v_machine) = 3, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("cb")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("ad")), "Does not reject the unintended string");
    end Test_Gen_Complement_Concats;
+   
+   
+   procedure Test_Gen_Complement_Unions(T : in out Test_Case'Class) is 
+      v_machine: DFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Left_Bracket, To_Unbounded_String("[")) &
+        Make_Token(Parse_Types.Caret, To_Unbounded_String("^")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("b")) &
+        Make_Token(Parse_Types.Right_Bracket, To_Unbounded_String("]")) &
+        Make_Token(Parse_Types.Pipe, To_Unbounded_String("|")) &
+        Make_Token(Parse_Types.Left_Bracket, To_Unbounded_String("[")) &
+        Make_Token(Parse_Types.Caret, To_Unbounded_String("^")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("c")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("d")) &
+        Make_Token(Parse_Types.Right_Bracket, To_Unbounded_String("]")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_DFA(v_tree);
+      Assert(Count_State(v_machine) = 6, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("b")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("c")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("d")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("z")), "Does not recognize the intended string");
+   end Test_Gen_Complement_Unions;
+   
+   procedure Test_Gen_Complement_Unions_2(T : in out Test_Case'Class) is 
+      v_machine: DFA;
+      v_input: Vector := Empty_Vector &
+        Make_Token(Parse_Types.Left_Bracket, To_Unbounded_String("[")) &
+        Make_Token(Parse_Types.Caret, To_Unbounded_String("^")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("a")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("b")) &
+        Make_Token(Parse_Types.Right_Bracket, To_Unbounded_String("]")) &
+        Make_Token(Parse_Types.Pipe, To_Unbounded_String("|")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("c")) &
+        Make_Token(Parse_Types.Character, To_Unbounded_String("d")) &
+        EOF;
+      v_tree: Tree;
+      v_success : Boolean;
+   begin
+      v_success := Parse(v_input, v_tree);
+      Assert(v_success, "Parse failed");
+      v_machine := Gen_DFA(v_tree);
+      Assert(Count_State(v_machine) = 4, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Recognize(v_machine, To_Unbounded_String("c")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("e")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("cd")), "Does not recognize the intended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("a")), "Does not reject the unintended string");
+      Assert(not Recognize(v_machine, To_Unbounded_String("cg")), "Does not reject the unintended string");
+   end Test_Gen_Complement_Unions_2;
    
    procedure Test_Gen_Simple_Interval(T : in out Test_Case'Class) is 
       v_machine: DFA;
@@ -809,11 +865,13 @@ package body Code_Gen_DFA_Tests is
       Register_Routine(T, Test_Gen_Multi_Concat_Union'Access, "Processes multiple mixed concats and unions");
       Register_Routine(T, Test_Gen_Simple_Range'Access, "Processes a simple range of one character");
       Register_Routine(T, Test_Gen_Multi_Char_Range'Access, "Processes a range of multiple single characters");
-      --Register_Routine(T, Test_Gen_Simple_Complement'Access, "Processes a simple range complement of one character");
-      --Register_Routine(T, Test_Gen_Multi_Char_Complement'Access, "Processes a range complement of multiple single characters");
+      Register_Routine(T, Test_Gen_Simple_Complement'Access, "Processes a simple range complement of one character");
+      Register_Routine(T, Test_Gen_Multi_Char_Complement'Access, "Processes a range complement of multiple single characters");
       Register_Routine(T, Test_Gen_Range_Concats'Access, "Processes a concatenation of multiple ranges");
       Register_Routine(T, Test_Gen_Range_Unions'Access, "Processes a union of multiple ranges");
-      --Register_Routine(T, Test_Gen_Complement_Concats'Access, "Processes a concatenation of multiple range complements");
+      Register_Routine(T, Test_Gen_Complement_Concats'Access, "Processes a concatenation of multiple range complements");
+      Register_Routine(T, Test_Gen_Complement_Unions'Access, "Processes a union of multiple range complements");
+      Register_Routine(T, Test_Gen_Complement_Unions_2'Access, "Processes a union of concat with a range complement");
       --Register_Routine(T, Test_Gen_Simple_Wildcard'Access, "Processes a wildcard of one character");
       --Register_Routine(T, Test_Gen_Concat_Wildcard_Precedence'Access, "Confirms wildcard has higher precedence");
       --Register_Routine(T, Test_Gen_Concat_Wildcard'Access, "Processes a wildcard of a concatenated fragment");
@@ -826,9 +884,9 @@ package body Code_Gen_DFA_Tests is
       Register_Routine(T, Test_Gen_Simple_Interval'Access, "Processes a simple range interval");
       Register_Routine(T, Test_Gen_Multi_Interval'Access, "Processes a a range with multiple intervals");
       Register_Routine(T, Test_Gen_Mixed_Range'Access, "Processes a range of mixed characters and intervals");
-      --Register_Routine(T, Test_Gen_Simple_Interval_Complement'Access, "Processes a complement of a simple interval");
-      --Register_Routine(T, Test_Gen_Multi_Interval_Complement'Access, "Processes a complement of a multiple intervals");
-      --Register_Routine(T, Test_Gen_Mixed_Complement'Access, "Processes a complement of mixed characters and intervals");
+      Register_Routine(T, Test_Gen_Simple_Interval_Complement'Access, "Processes a complement of a simple interval");
+      Register_Routine(T, Test_Gen_Multi_Interval_Complement'Access, "Processes a complement of a multiple intervals");
+      Register_Routine(T, Test_Gen_Mixed_Complement'Access, "Processes a complement of mixed characters and intervals");
       --Register_Routine(T, Test_Ignore_Match_Start_End'Access, "Ignores the match start and match end parts of the AST");
       --Register_Routine(T, Test_Gen_Escape_Characters'Access, "Processes known escaped characters");
       --Register_Routine(T, Test_Gen_Range_Escape_Characters'Access, "Processes known escaped characters within a range");

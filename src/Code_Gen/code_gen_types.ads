@@ -75,6 +75,7 @@ package Code_Gen_Types is
    type DFA_Transitions is record 
       input_transitions : DFA_Input_Transitions.Map;
       has_complement : Boolean;
+      complement_inputs : Inputs.Set;
       complement_transition : Natural; -- The state to go to if nothing matches the input transitions
    end record;
    
