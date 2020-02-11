@@ -78,6 +78,23 @@ package body Code_Gen_DFAs is
       return My_New_Map;
    end Merge;
    
+   function Convert_Range_Transitions
+     ( The_Inputs : Inputs.Set; 
+       The_States: NFA_States.Set) return NFA_Input_Transitions.Map is 
+      
+      My_Input_Transitions : NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
+      procedure Convert(The_Position: Inputs.Cursor) is
+         My_Input : Character;
+      begin 
+         My_Input := Inputs.Element(The_Position);
+         NFA_Input_Transitions.Insert(My_Input_Transitions, My_Input, The_States);
+      end Convert;
+   begin 
+      Inputs.Iterate( The_Inputs, Convert'Access);
+      
+      return My_Input_Transitions;
+   end Convert_Range_Transitions;
+   
    function Build_Transitions_For_A_State
      (DFA_State : NFA_States.Set; 
       The_NFA_State_Table : State_Transitions.Vector) 
@@ -88,12 +105,23 @@ package body Code_Gen_DFAs is
       procedure Build_Transition(The_Position : NFA_States.Cursor) is
          My_NFA_State : Natural;
          My_Transitions : Transitions;
-         
+         My_Range_Transitions: NFA_Input_Transitions.Map;
       begin 
          My_NFA_State := Element(The_Position);
          My_Transitions := Element(The_NFA_State_Table, My_NFA_State);
-            
-         My_Input_Transitions := Merge(My_Input_Transitions, Build_Input_Transitions(My_Transitions.input_Transitions, The_NFA_State_Table));
+         
+         case My_Transitions.kind is 
+            when By_Char =>
+               My_Input_Transitions := Merge(My_Input_Transitions, Build_Input_Transitions(My_Transitions.input_Transitions, The_NFA_State_Table));
+            when By_Range =>
+               My_Range_Transitions := Convert_Range_Transitions(My_Transitions.range_inputs, My_Transitions.range_states);
+               My_Input_Transitions := 
+                 Merge(My_Input_Transitions, 
+                       Build_Input_Transitions(My_Range_Transitions, The_NFA_State_Table));
+            when By_Range_Complement =>
+               null;
+         end case;
+           
             
          -- once we're done with this procedure, we've taken the current NFA state and, for all its 
          -- valid input transitions, we've tossed all the epsilon closures into our tracking map.
@@ -162,8 +190,28 @@ package body Code_Gen_DFAs is
          Put_Line("transitions : " & As_String(My_Input_Transitions));
             
          -- At this point, for the given DFA state we just dequeued, we have 
-         -- built a giant map from each inputs to the set of all NFA states that we could reach
-         -- using this DFA state. We now need to iterate over this map, and insert element each as a 
+         -- built a giant map from each input to the set of all NFA states that we could reach
+         -- using this DFA state. 
+         -- 
+         -- However, this does not handle ranges or range complements, and doesn't fit with how
+         -- the recognize function works. We can handle the range easily -- we'll simply toss
+         -- each character in the range as an input that goes to the range's next NFA state.
+         -- 
+         -- But this does not handle range complements. A simple way to illustrate the problem is with the following union:
+         --     ab|[^c]d|[^d]g
+         -- But we don't want to waste precious memory space by tossing the entire unicode character
+         -- set into an input transitions table (although we could, the unicode character space is at present 137,000
+         -- characters, so at least 100 KB per range in the regex, which seems a terrible waste). But remember that we 
+         -- only process one DFA state at a time. Theoretically, if one or more range state machine were in the set 
+         -- of NFA states, we could store it and the states it went to -- but separately from the regular input
+         -- transitions. Then the question would be how to combine the range transitions and the input transitions.
+         -- Take the example above. The initial DFA state consists of the states at the start of ab, [^c]d, and [^d]g.
+         --   On input a, we we would like to go to a set of states at the start of b, d, and g
+         --   On input c, we could like to go to a set of states at the start of g
+         --   On input d, we would like to go to a set of states at the start of d
+         --   On input z, we would like to to to a set of states at the start of d and g.
+         --
+         -- We now need to iterate over this map, and insert element each as a 
          -- new state in the queue, and convert the map into a DFA transition map
             
          -- This line may or may not add more states to the queue.

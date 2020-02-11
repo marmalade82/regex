@@ -408,7 +408,7 @@ package body Code_Gen_DFA_Tests is
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
-      Assert(Count_State(v_machine) = 2, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Count_State(v_machine) = 4, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("b")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("c")), "Does not recognize the intended string");
@@ -476,11 +476,11 @@ package body Code_Gen_DFA_Tests is
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
-      Assert(Count_State(v_machine) = 4, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("ac")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("ad")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("bc")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("bd")), "Does not recognize the intended string");
+      Assert(Count_State(v_machine) = 7, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
    end Test_Gen_Range_Concats;
    
    procedure Test_Gen_Range_Unions(T : in out Test_Case'Class) is 
@@ -507,7 +507,6 @@ package body Code_Gen_DFA_Tests is
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
-      Assert(Count_State(v_machine) = 8, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("b")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("c")), "Does not recognize the intended string");
@@ -515,6 +514,7 @@ package body Code_Gen_DFA_Tests is
       Assert(Recognize(v_machine, To_Unbounded_String("e")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("f")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("g")), "Fails to reject unintended string");
+      Assert(Count_State(v_machine) = 7, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
    end Test_Gen_Range_Unions;
    
     procedure Test_Gen_Complement_Concats(T : in out Test_Case'Class) is 
@@ -563,7 +563,7 @@ package body Code_Gen_DFA_Tests is
       Assert(Recognize(v_machine, To_Unbounded_String("d")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("A")), "Does not reject the unintended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("e")), "Does not reject the unintended string");
-      Assert(Count_State(v_machine) = 2, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Count_State(v_machine) = 5, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
    end Test_Gen_Simple_Interval;
    
    procedure Test_Gen_Multi_Interval(T : in out Test_Case'Class) is 
@@ -597,7 +597,7 @@ package body Code_Gen_DFA_Tests is
       Assert(Recognize(v_machine, To_Unbounded_String("5")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("A")), "Does not reject the unintended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("e")), "Does not reject the unintended string");
-      Assert(Count_State(v_machine) = 2, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Count_State(v_machine) = 8, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
    end Test_Gen_Multi_Interval;
    
    procedure Test_Gen_Mixed_Range(T : in out Test_Case'Class) is 
@@ -631,7 +631,7 @@ package body Code_Gen_DFA_Tests is
       Assert(not Recognize(v_machine, To_Unbounded_String("e")), "Does not reject the unintended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("Q")), "Does not reject the unintended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("8")), "Does not reject the unintended string");
-      Assert(Count_State(v_machine) = 2, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Count_State(v_machine) = 8, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
    end Test_Gen_Mixed_Range;
    
    procedure Test_Gen_Simple_Interval_Complement(T : in out Test_Case'Class) is 
@@ -807,12 +807,12 @@ package body Code_Gen_DFA_Tests is
       Register_Routine(T, Test_Gen_Mix_Union_Concat'Access, "Processes union then concat");
       Register_Routine(T, Test_Gen_Mix_Concat_Union'Access, "Processes concat then union");
       Register_Routine(T, Test_Gen_Multi_Concat_Union'Access, "Processes multiple mixed concats and unions");
-      --Register_Routine(T, Test_Gen_Simple_Range'Access, "Processes a simple range of one character");
-      --Register_Routine(T, Test_Gen_Multi_Char_Range'Access, "Processes a range of multiple single characters");
+      Register_Routine(T, Test_Gen_Simple_Range'Access, "Processes a simple range of one character");
+      Register_Routine(T, Test_Gen_Multi_Char_Range'Access, "Processes a range of multiple single characters");
       --Register_Routine(T, Test_Gen_Simple_Complement'Access, "Processes a simple range complement of one character");
       --Register_Routine(T, Test_Gen_Multi_Char_Complement'Access, "Processes a range complement of multiple single characters");
-      --Register_Routine(T, Test_Gen_Range_Concats'Access, "Processes a concatenation of multiple ranges");
-      --Register_Routine(T, Test_Gen_Range_Unions'Access, "Processes a union of multiple ranges");
+      Register_Routine(T, Test_Gen_Range_Concats'Access, "Processes a concatenation of multiple ranges");
+      Register_Routine(T, Test_Gen_Range_Unions'Access, "Processes a union of multiple ranges");
       --Register_Routine(T, Test_Gen_Complement_Concats'Access, "Processes a concatenation of multiple range complements");
       --Register_Routine(T, Test_Gen_Simple_Wildcard'Access, "Processes a wildcard of one character");
       --Register_Routine(T, Test_Gen_Concat_Wildcard_Precedence'Access, "Confirms wildcard has higher precedence");
@@ -823,9 +823,9 @@ package body Code_Gen_DFA_Tests is
       --Register_Routine(T, Test_Gen_Simple_Question'Access, "Processes an optional of one character");
       --Register_Routine(T, Test_Gen_Concat_Question_Precedence'Access, "Confirms optional has higher precedence");
       --Register_Routine(T, Test_Gen_Concat_Question'Access, "Processes an optional of a concatenated fragment");
-      --Register_Routine(T, Test_Gen_Simple_Interval'Access, "Processes a simple range interval");
-      --Register_Routine(T, Test_Gen_Multi_Interval'Access, "Processes a a range with multiple intervals");
-      --Register_Routine(T, Test_Gen_Mixed_Range'Access, "Processes a range of mixed characters and intervals");
+      Register_Routine(T, Test_Gen_Simple_Interval'Access, "Processes a simple range interval");
+      Register_Routine(T, Test_Gen_Multi_Interval'Access, "Processes a a range with multiple intervals");
+      Register_Routine(T, Test_Gen_Mixed_Range'Access, "Processes a range of mixed characters and intervals");
       --Register_Routine(T, Test_Gen_Simple_Interval_Complement'Access, "Processes a complement of a simple interval");
       --Register_Routine(T, Test_Gen_Multi_Interval_Complement'Access, "Processes a complement of a multiple intervals");
       --Register_Routine(T, Test_Gen_Mixed_Complement'Access, "Processes a complement of mixed characters and intervals");
