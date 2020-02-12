@@ -66,7 +66,7 @@ package body Code_Gen_DFA_Tests is
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
-      Assert(Count_State(v_machine) = 6, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Count_State(v_machine) = 3, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("aa")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("aaa")), "Does not recognize the intended string");
@@ -89,7 +89,7 @@ package body Code_Gen_DFA_Tests is
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
-      Assert(Count_State(v_machine) = 6, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Count_State(v_machine) = 3, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("aa")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("aaaa")), "Does not recognize the intended string");
@@ -115,8 +115,7 @@ package body Code_Gen_DFA_Tests is
       Assert(Recognize(v_machine, To_Unbounded_String("aaa")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("")), "Fails to reject unintended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("b")), "Fails to reject unintended string");
-      -- 2 states from initial char nfa, and then 4 from the following wildcard nfa
-      Assert(Count_State(v_machine) = 6, "Generates incorrect number of states: " & Count_State(v_machine)'Image);	
+      Assert(Count_State(v_machine) = 3, "Generates incorrect number of states: " & Count_State(v_machine)'Image);	
    end Test_Gen_Simple_Plus;
    
    procedure Test_Gen_Union_Plus_Precedence(T : in out Test_Case'Class) is 
@@ -133,12 +132,12 @@ package body Code_Gen_DFA_Tests is
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
-      Assert(Count_State(v_machine) = 9, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("b")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("bb")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("aa")), "Fails to reject unintended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("")), "Fails to reject unintended string");
+      Assert(Count_State(v_machine) = 4, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
    end Test_Gen_Union_Plus_Precedence;
    
    procedure Test_Gen_Union_Plus(T : in out Test_Case'Class) is 
@@ -157,13 +156,13 @@ package body Code_Gen_DFA_Tests is
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
-      Assert(Count_State(v_machine) = 12, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("b")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("aa")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("bb")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("c")), "Fails to reject unintended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("")), "Fails to reject unintended string");
+      Assert(Count_State(v_machine) = 5, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
    end Test_Gen_Union_Plus;
    
    procedure Test_Gen_Simple_Question(T : in out Test_Case'Class) is 
@@ -198,11 +197,11 @@ package body Code_Gen_DFA_Tests is
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
-      Assert(Count_State(v_machine) = 4, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("ab")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("")), "Fails to reject unintended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("b")), "Fails to reject unintended string");
+      Assert(Count_State(v_machine) = 3, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
    end Test_Gen_Concat_Question_Precedence;
    
    procedure Test_Gen_Concat_Question(T : in out Test_Case'Class) is 
@@ -223,7 +222,7 @@ package body Code_Gen_DFA_Tests is
       Assert(Recognize(v_machine, To_Unbounded_String("ab")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("c")), "Fails to reject unintended string");
-      Assert(Count_State(v_machine) = 4, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Count_State(v_machine) = 3, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
    end Test_Gen_Concat_Question;
    
    procedure Test_Gen_Concat(T: in out Test_Case'Class) is 
@@ -827,7 +826,7 @@ package body Code_Gen_DFA_Tests is
              "Does not recognize the intended string"
             );
       Assert(not Recognize(v_machine, To_Unbounded_String("b")), "Fails to reject unintended string");
-      Assert(Count_State(v_machine) = 8, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
+      Assert(Count_State(v_machine) = 5, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
    end Test_Gen_Escape_Characters;
    
    procedure Test_Gen_Range_Escape_Characters(T: in out Test_Case'Class) is 
@@ -882,18 +881,17 @@ package body Code_Gen_DFA_Tests is
       Register_Routine(T, Test_Gen_Multi_Interval_Complement'Access, "Processes a complement of a multiple intervals");
       Register_Routine(T, Test_Gen_Mixed_Complement'Access, "Processes a complement of mixed characters and intervals");
       Register_Routine(T, Test_Gen_Simple_Wildcard'Access, "Processes a wildcard of one character");
-      --Register_Routine(T, Test_Gen_Concat_Wildcard_Precedence'Access, "Confirms wildcard has higher precedence");
-      --Register_Routine(T, Test_Gen_Concat_Wildcard'Access, "Processes a wildcard of a concatenated fragment");
-      --Register_Routine(T, Test_Gen_Simple_Plus'Access, "Processes a plus of one character");
-      --Register_Routine(T, Test_Gen_Union_Plus_Precedence'Access, "Confirms Plus has higher precedence");
-      --Register_Routine(T, Test_Gen_Union_Plus'Access, "Processes a Plus of a Union Fragment");
-      --Register_Routine(T, Test_Gen_Simple_Question'Access, "Processes an optional of one character");
-      --Register_Routine(T, Test_Gen_Concat_Question_Precedence'Access, "Confirms optional has higher precedence");
-      --Register_Routine(T, Test_Gen_Concat_Question'Access, "Processes an optional of a concatenated fragment");
-      
-      --Register_Routine(T, Test_Ignore_Match_Start_End'Access, "Ignores the match start and match end parts of the AST");
-      --Register_Routine(T, Test_Gen_Escape_Characters'Access, "Processes known escaped characters");
-      --Register_Routine(T, Test_Gen_Range_Escape_Characters'Access, "Processes known escaped characters within a range");
+      Register_Routine(T, Test_Gen_Concat_Wildcard_Precedence'Access, "Confirms wildcard has higher precedence");
+      Register_Routine(T, Test_Gen_Concat_Wildcard'Access, "Processes a wildcard of a concatenated fragment");
+      Register_Routine(T, Test_Gen_Simple_Plus'Access, "Processes a plus of one character");
+      Register_Routine(T, Test_Gen_Union_Plus_Precedence'Access, "Confirms Plus has higher precedence");
+      Register_Routine(T, Test_Gen_Union_Plus'Access, "Processes a Plus of a Union Fragment");
+      Register_Routine(T, Test_Gen_Simple_Question'Access, "Processes an optional of one character");
+      Register_Routine(T, Test_Gen_Concat_Question_Precedence'Access, "Confirms optional has higher precedence");
+      Register_Routine(T, Test_Gen_Concat_Question'Access, "Processes an optional of a concatenated fragment");
+      Register_Routine(T, Test_Ignore_Match_Start_End'Access, "Ignores the match start and match end parts of the AST");
+      Register_Routine(T, Test_Gen_Escape_Characters'Access, "Processes known escaped characters");
+      Register_Routine(T, Test_Gen_Range_Escape_Characters'Access, "Processes known escaped characters within a range");
    end Register_Tests;
    
 
