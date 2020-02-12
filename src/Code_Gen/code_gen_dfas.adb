@@ -13,6 +13,18 @@ package body Code_Gen_DFAs is
    use NFA_Input_Transitions;
    use NFA_States;
    
+   function String_Hash(The_String : Unbounded_String) return Ada.Containers.Hash_Type is 
+   begin
+      return Ada.Strings.Hash(To_String(The_String));
+   end String_Hash;
+   
+   package Seen_States is new Ada.Containers.Hashed_Maps 
+     (Key_Type        => Unbounded_String,
+      Element_Type    => Natural,
+      Hash            => String_Hash,
+      Equivalent_Keys => Ada.Strings.Unbounded."=",
+      "="             => Standard."=");   
+   
    type DFA_Conversion is record 
       states : DFA_States.Vector;
       accepting: NFA_States.Set;
@@ -305,12 +317,58 @@ package body Code_Gen_DFAs is
               );
    end Convert_Complement;
    
+   function To_Key(The_State: NFA_States.Set) return Unbounded_String is
+      My_String : Unbounded_String := To_Unbounded_String("");
+      package State_Sorter is new Ada.Containers.Vectors
+        (Index_Type   => Natural,
+         Element_Type => Natural,
+         "="          => Standard."=");
+      package State_Sorting is new State_Sorter.Generic_Sorting
+        ("<" => Standard."<");
+      My_Sorter : State_Sorter.Vector;
+      
+      procedure Build_Sorter(The_Position : NFA_States.Cursor) is 
+      begin 
+         State_Sorter.Append(My_Sorter, NFA_States.Element(The_Position));
+      end Build_Sorter;
+      
+      procedure Build_String(The_Position: State_Sorter.Cursor) is 
+      begin
+         My_String := My_String & State_Sorter.Element(The_Position)'Image;
+      end Build_String;
+   begin 
+      NFA_States.Iterate(The_State, Build_Sorter'Access);
+      State_Sorting.Sort(My_Sorter);
+      State_Sorter.Iterate(My_Sorter, Build_String'Access);
+      Put_Line("Built key: " & To_String(My_String));
+      return My_String;
+   end To_Key;
+   
+   function Is_New_State(Global_Seen_States: in out Seen_States.Map; The_State: NFA_States.Set) return Boolean is 
+      use Seen_States;
+   begin
+      return Seen_States.Find(Global_Seen_States, To_Key(The_State)) = Seen_States.No_Element;
+   end Is_New_State;
+   
+   --This function will throw if the state can't be found.
+   function Get_State_Number(Global_Seen_States: in out Seen_States.Map; The_State: NFA_States.Set) return Natural is 
+   begin
+      return Seen_States.Element(Seen_States.Find(Global_Seen_States, To_Key(The_State)));
+   end Get_State_Number;
+   
+   procedure Assign_State_Number(Global_Seen_States: in out Seen_States.Map; The_State: NFA_States.Set; The_Number: Natural) is 
+   begin
+      Seen_States.Insert(Global_Seen_States, To_Key(The_State), The_Number);
+   end Assign_State_Number;
+   
    function Build_DFA_Transitions
      (The_NFA_Transitions : Complement_Conversion; 
       The_Last_Used_State_Number: in out Natural;
       The_NFA_Accepting : NFA_States.Set;
       The_DFA_Accepting : in out NFA_States.Set;
-      The_Queue : in out DFA_States_Queue.List
+      The_Queue : in out DFA_States_Queue.List;
+      The_Complement_Number: out Natural;
+      Global_Seen_States: in out Seen_States.Map
      ) 
       return DFA_Input_Transitions.Map is 
       
@@ -320,19 +378,45 @@ package body Code_Gen_DFAs is
          My_Input : Character;
          My_State : NFA_States.Set;
       begin 
-         My_State_Number := My_State_Number + 1;
-         My_Input := Key(The_Position);
-         My_State := NFA_Input_Transitions.Element(The_Position);
-            
-         -- we've queued up the state that this input goes to.
-         Enqueue(The_Queue, (number => My_State_Number, state => My_State));
-         DFA_Input_Transitions.Insert(My_DFA_Transitions, My_Input, My_State_Number);
+         -- During DFA generation from an NFA, how do make sure that we see each state once,
+         -- and only once? For example, a wildcard involves looping back on itself, and can always
+         -- loop back on itself. So when we see the state an input leads to, we need to check
+         -- if it's been seen before.
+         -- If it has, we don't assign a new state number -- we use the old one, and we don't queue it.
+         -- If it has not, we assign a new state number and put it into the hash table
+         -- for looking up if it's been seen before, and we queue it to be processed later.
+         --
+         -- What's a sustainable way for determining whether we've seen a state (collection of NFA states) before?
+         -- Supose we have the collection of NFA states { 1, 3, 7, 9 } (pre-sorting for clarity). We could turn this into
+         -- the string "1379", hash it, and store the corresponding DFA state number in a hash table.
+         -- We could also add it up into the number 1379, but here there's a possibility for overflow. Of course,
+         -- doing this as a string could lead to really long keys in the hash table. But perhaps that's okay? At least for now.
          
-         -- We can also check whether the current set of NFA states has any intersection with 
-         -- the set of NFA accepting states. If so, the current state is an accepting state.
-         if not NFA_States.Is_Empty( NFA_States.Intersection(My_State, The_NFA_Accepting) ) then
-            NFA_States.Insert(The_DFA_Accepting, My_State_Number);
+         My_State := NFA_Input_Transitions.Element(The_Position);
+         My_Input := Key(The_Position);
+         
+         if Is_New_State(Global_Seen_States, My_State) then 
+            Put_Line("Found new state");
+            My_State_Number := My_State_Number + 1;
+            
+            -- we've queued up the state that this input goes to.
+            Enqueue(The_Queue, (number => My_State_Number, state => My_State));
+            DFA_Input_Transitions.Insert(My_DFA_Transitions, My_Input, My_State_Number);
+            Put_Line("Assigning with key : " & To_String( To_Key(My_State) ));
+            Assign_State_Number(Global_Seen_States, My_State, My_State_Number);
+         
+            -- We can also check whether the current set of NFA states has any intersection with 
+            -- the set of NFA accepting states. If so, the current state is an accepting state.
+            if not NFA_States.Is_Empty( NFA_States.Intersection(My_State, The_NFA_Accepting) ) then
+               NFA_States.Insert(The_DFA_Accepting, My_State_Number);
+            end if;
+         else 
+            -- if we've seen this state before, we've analyzed it already.
+            -- so we just let the current state transition to it.
+            DFA_Input_Transitions.Insert(My_DFA_Transitions, My_Input, Get_State_Number(Global_Seen_States, My_State));
          end if;
+         
+         
  
       end Build_Transitions;
    begin 
@@ -342,14 +426,27 @@ package body Code_Gen_DFAs is
       Iterate(The_NFA_Transitions.input_transitions, Build_Transitions'Access);
       
       -- Once we're done processing each input transition, we process the complement transitions, if any.
+      -- During DFA generation from an NFA, how do make sure that we see each state once,
+         -- and only once? For example, a wildcard involves looping back on itself, and can always
+         -- loop back on itself. So when we see the state a complement leads to, we need to check if 
+         -- it's been seen before.
+         -- If it has, we don't assign a new state number -- we use the old one, and we don't queue it.
+         -- If it has not, we assign a new state number and put it into the hash table
+         -- for looking up if it's been seen before, and queue this new state to be processed.
       if not Is_Empty(The_NFA_Transitions.complement_transitions) then 
-         My_State_Number := My_State_Number + 1;
-         Enqueue(The_Queue, (number => My_State_Number, state => The_NFA_Transitions.complement_transitions));
+         if Is_New_State(Global_Seen_States, The_NFA_Transitions.complement_transitions) then 
+            My_State_Number := My_State_Number + 1;
+            Enqueue(The_Queue, (number => My_State_Number, state => The_NFA_Transitions.complement_transitions));
          
-         if not NFA_States.Is_Empty
-           ( NFA_States.Intersection
-               (The_NFA_Transitions.complement_transitions, The_NFA_Accepting) ) then
-            NFA_States.Insert(The_DFA_Accepting, My_State_Number);
+            if not NFA_States.Is_Empty
+              ( NFA_States.Intersection
+                  (The_NFA_Transitions.complement_transitions, The_NFA_Accepting) ) then
+               NFA_States.Insert(The_DFA_Accepting, My_State_Number);
+            end if;
+            The_Complement_Number := My_State_Number;
+            Assign_State_Number(Global_Seen_States, The_NFA_Transitions.complement_transitions, My_State_Number);
+         else 
+            The_Complement_Number := Get_State_Number(Global_Seen_States, The_NFA_Transitions.complement_transitions);
          end if;
       end if;
       
@@ -358,7 +455,8 @@ package body Code_Gen_DFAs is
    end Build_DFA_Transitions;
    
    function Build_DFA_States
-     (The_States_Queue: in out DFA_States_Queue.List;
+     (Global_Seen_States: in out Seen_States.Map;
+      The_States_Queue: in out DFA_States_Queue.List;
       The_NFA : NFA
      ) return DFA_Conversion is 
       
@@ -370,6 +468,7 @@ package body Code_Gen_DFAs is
       My_Accepting : NFA_States.Set := NFA_States.Empty_Set;
       My_NFA_Transitions : Transitions_For_State;
       My_NFA_Complement_Conversion : Complement_Conversion;
+      My_Complement_State_Number : Natural;
    begin 
       My_State_Number := 0; -- initially the last known state number is 0, since the queue starts with one thing in it.
       while Dequeue(The_States_Queue, My_State) loop
@@ -378,51 +477,7 @@ package body Code_Gen_DFAs is
          My_Input_Transitions := My_NFA_Transitions.input_transitions;
          Put_Line("transitions : " & As_String(My_Input_Transitions));
             
-         -- At this point, for the given DFA state we just dequeued, we have 
-         -- built a giant map from each input to the set of all NFA states that we could reach
-         -- using this DFA state. 
-         -- 
-         -- However, this does not handle ranges or range complements, and doesn't fit with how
-         -- the recognize function works. We can handle the range easily -- we'll simply toss
-         -- each character in the range as an input that goes to the range's next NFA state.
-         -- 
-         -- But this does not handle range complements. A simple way to illustrate the problem is with the following union:
-         --     ab|[^c]d|[^d]g
-         -- But we don't want to waste precious memory space by tossing the entire unicode character
-         -- set into an input transitions table (although we could, the unicode character space is at present 137,000
-         -- characters, so at least 100 KB per range in the regex, which seems a terrible waste). But remember that we 
-         -- only process one DFA state at a time. Theoretically, if one or more complement state machine were in the set 
-         -- of NFA states, we could store it and the states it went to -- but separately from the regular input
-         -- transitions. Then the question would be how to combine the range transitions and the input transitions.
-         -- Take the example above. The initial DFA state consists of the states at the start of ab, [^c]d, [^d]i, [^e]g.
-         --   On input a, we we would like to go to a set of states at the start of b, d, i, and g
-         --   On input c, we could like to go to a set of states at the start of i and g
-         --   On input d, we would like to go to a set of states at the start of d and g
-         --   On input e, we would like to go to a set of states at the start of d and i
-         --   On input z, we would like to to to a set of states at the start of d, i, and g.
-         -- Presumably, after processing from the initial state, we would have the following:
-         --   A map with one entry, from "a" to the epsilon closure of consuming the "a" input.
-         --   A vector with two entries, 
-         --       one containing c and the epsilon closure of consuming anything but c;
-         --       one containing d and the epsilon closure of consuming anything but d;
-         -- For every input in the map, we check whether the input is in any of the vector entries. If NOT,
-         -- we merge the vector entry's epsilon closure into the input map (This means that if the input
-         -- is in the input map, we don't need to consider whether the input is missing from the complements). 
-         --
-         -- Then we take the union of all the complements' epsilon closures. We'll use this later.
-         -- 
-         -- For each complement, we examine each input in turn. For each of the other complements, if this input
-         -- isn't in the other complement, the other complement's epsilon closure gets merged into the input map.
-         -- This continues until all the inputs in the complement have been processed. Once this is done, we know
-         -- exactly where each of the inputs that are part of the complements will lead. Then, any input that iS NOT
-         -- recognized by the input map must go to the union of all the complements' epsilon closures, which is its 
-         -- own separate state.
-         --
-         --
-         -- We now need to iterate over this map, and insert element each as a 
-         -- new state in the queue, and convert the map into a DFA transition map
-            
-         
+    
          My_NFA_Complement_Conversion := Convert_Complement(My_NFA_Transitions);
          
          -- This line may or may not add more states to the queue.
@@ -433,7 +488,9 @@ package body Code_Gen_DFAs is
             My_State_Number, 
             The_NFA.accepting, 
             My_Accepting, 
-            The_States_Queue
+            The_States_Queue,
+            My_Complement_State_Number,
+            Global_Seen_States
            );            
             
          -- Once we have the DFA transition map, we can finally insert the DFA map into the DFA states table.
@@ -447,19 +504,16 @@ package body Code_Gen_DFAs is
                 )
               );
          else 
+            -- If there was a complement, it was assigned a state number.
             DFA_States.Append
               (My_DFA_States, 
                ( input_transitions => My_DFA_Transitions,
                  has_complement => True,
                  complement_inputs => My_NFA_Complement_Conversion.complement_inputs,
-                 complement_transition => My_State_Number
+                 complement_transition => My_Complement_State_Number
                 )
               );
          end if;
-                  
-         -- During DFA generation from an NFA, how do make sure that we see each state once,
-         -- and only once. For example, a wildcard involves looping back on itself, and can always
-         -- loop back on itself. on an input. Are we detecting that? No we are not.
          
       end loop;
       
@@ -474,7 +528,7 @@ package body Code_Gen_DFAs is
       My_DFA_States : DFA_States.Vector := DFA_States.Empty_Vector ;
       My_Queue : DFA_States_Queue.List := DFA_States_Queue.Empty_List;
       My_State_Number : Natural := 0;
-   
+      Global_Seen_States : Seen_States.Map := Seen_States.Empty_Map;
    begin
       -- We would like to set this up as a processing of a queue of DFA states.
       -- 1. Enqueue Start States (with the state they correspond with)
@@ -499,13 +553,16 @@ package body Code_Gen_DFAs is
       Put_Line("start state: " & As_String(My_Start_State));
       
       Enqueue(My_Queue, ( number => My_State_Number, state => My_Start_State));
+      Assign_State_Number(Global_Seen_States, My_Start_State, My_State_Number);
       
-      return Build_DFA_States (My_Queue, The_NFA);
+      return Build_DFA_States (Global_Seen_States, My_Queue, The_NFA);
    end DFA_States_From_NFA;
    
    function NFA_To_DFA(The_NFA : NFA) return DFA is 
       My_Conversion : DFA_Conversion;
    begin 
+      
+      
       -- A DFA is different. Each state of the DFA represents
       -- a set of states from the NFA. A single transition to another state
       -- simply represents a transition to another states from the NFA.
@@ -515,6 +572,8 @@ package body Code_Gen_DFAs is
       --    that contain an accepting state
       -- 3. State transitions, which take us from a set of NFA states to 
       --    the next set based on the input PLUS epsilon transitions.
+      
+      -- This is the start of converting, so we need to reset globals.
       
       My_Conversion := DFA_States_From_NFA(The_NFA);
       Put_Line("accepting states are " & As_String(My_Conversion.accepting));
