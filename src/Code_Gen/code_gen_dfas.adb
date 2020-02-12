@@ -457,7 +457,8 @@ package body Code_Gen_DFAs is
    function Build_DFA_States
      (Global_Seen_States: in out Seen_States.Map;
       The_States_Queue: in out DFA_States_Queue.List;
-      The_NFA : NFA
+      The_NFA : NFA;
+      The_Start_Is_Accepting: Boolean
      ) return DFA_Conversion is 
       
       My_DFA_States : DFA_States.Vector := DFA_States.Empty_Vector;
@@ -472,6 +473,7 @@ package body Code_Gen_DFAs is
    begin 
       My_State_Number := 0; -- initially the last known state number is 0, since the queue starts with one thing in it.
       while Dequeue(The_States_Queue, My_State) loop
+         -- Note : The 0th state never gets assessed for having one of the accepting states.
          Put_Line("dequeued: " & As_String(My_State.state) & ", which is state " & My_State.number'Image);
          My_NFA_Transitions := Build_Transitions_For_A_State(My_State.state, The_NFA.states);
          My_Input_Transitions := My_NFA_Transitions.input_transitions;
@@ -517,6 +519,10 @@ package body Code_Gen_DFAs is
          
       end loop;
       
+      if The_Start_Is_Accepting then 
+         NFA_States.Union(My_Accepting, NFA_States.To_Set(0));
+      end if;
+      
       return (
               states => My_DFA_States,
               accepting => My_Accepting
@@ -529,6 +535,7 @@ package body Code_Gen_DFAs is
       My_Queue : DFA_States_Queue.List := DFA_States_Queue.Empty_List;
       My_State_Number : Natural := 0;
       Global_Seen_States : Seen_States.Map := Seen_States.Empty_Map;
+      Start_Is_Accepting: Boolean;
    begin
       -- We would like to set this up as a processing of a queue of DFA states.
       -- 1. Enqueue Start States (with the state they correspond with)
@@ -555,7 +562,9 @@ package body Code_Gen_DFAs is
       Enqueue(My_Queue, ( number => My_State_Number, state => My_Start_State));
       Assign_State_Number(Global_Seen_States, My_Start_State, My_State_Number);
       
-      return Build_DFA_States (Global_Seen_States, My_Queue, The_NFA);
+      Start_Is_Accepting := not NFA_States.Is_Empty( NFA_States.Intersection(The_NFA.accepting, My_Start_State) );
+      
+      return Build_DFA_States (Global_Seen_States, My_Queue, The_NFA, Start_Is_Accepting);
    end DFA_States_From_NFA;
    
    function NFA_To_DFA(The_NFA : NFA) return DFA is 

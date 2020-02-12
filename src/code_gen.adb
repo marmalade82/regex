@@ -268,6 +268,7 @@ package body Code_Gen is
       end loop;
       
       -- If we processed all the input, we need to make sure that our final state is an accepting state.
+      Put_Line("Accepting states: " & As_String(The_Machine.accepting) & " current state is " & My_Current_State'Image);
       
       return Contains(The_Machine.accepting, My_Current_State);
    end Recognize;

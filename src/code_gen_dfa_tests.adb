@@ -41,14 +41,15 @@ package body Code_Gen_DFA_Tests is
       v_tree: Tree;
       v_success : Boolean;
    begin
+      Put_Line("Starting simple wildcard");
       v_success := Parse(v_input, v_tree);
       Assert(v_success, "Parse failed");
       v_machine := Gen_DFA(v_tree);
-      Assert(Count_State(v_machine) = 4, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
-      Assert(Recognize(v_machine, To_Unbounded_String("")), "Does not recognize the intended string");
+      Assert(Count_State(v_machine) = 2, "Generates incorrect number of states: " & Count_State(v_machine)'Image);
       Assert(Recognize(v_machine, To_Unbounded_String("a")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("aa")), "Does not recognize the intended string");
       Assert(Recognize(v_machine, To_Unbounded_String("aaa")), "Does not recognize the intended string");
+      Assert(Recognize(v_machine, To_Unbounded_String("")), "Does not recognize the intended string");
       Assert(not Recognize(v_machine, To_Unbounded_String("b")), "Fails to reject unintended string");
    end Test_Gen_Simple_Wildcard;
    
@@ -880,11 +881,7 @@ package body Code_Gen_DFA_Tests is
       Register_Routine(T, Test_Gen_Simple_Interval_Complement'Access, "Processes a complement of a simple interval");
       Register_Routine(T, Test_Gen_Multi_Interval_Complement'Access, "Processes a complement of a multiple intervals");
       Register_Routine(T, Test_Gen_Mixed_Complement'Access, "Processes a complement of mixed characters and intervals");
-      
-      
-      
-      
-      --Register_Routine(T, Test_Gen_Simple_Wildcard'Access, "Processes a wildcard of one character");
+      Register_Routine(T, Test_Gen_Simple_Wildcard'Access, "Processes a wildcard of one character");
       --Register_Routine(T, Test_Gen_Concat_Wildcard_Precedence'Access, "Confirms wildcard has higher precedence");
       --Register_Routine(T, Test_Gen_Concat_Wildcard'Access, "Processes a wildcard of a concatenated fragment");
       --Register_Routine(T, Test_Gen_Simple_Plus'Access, "Processes a plus of one character");
