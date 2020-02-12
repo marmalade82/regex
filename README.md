@@ -103,22 +103,22 @@ The following token types are used to help direct the operation of the Regex Eng
 Each NFA will be translated into a DFA, and should support the same processing as the NFA (it should recognize the same language).
 
 ```
-[ ] Character (outside a range or range complement)
-[ ] Escaped Character (outside a range or range complement)
-[ ] Union
-[ ] Concat
-[ ] Wildcard
-[ ] Plus
-[ ] Optional
-[ ] Range
-[ ] Range Complement
+[X] Character (outside a range or range complement)
+[X] Escaped Character (outside a range or range complement)
+[X] Union
+[X] Concat
+[X] Wildcard
+[X] Plus
+[X] Optional
+[X] Range
+[X] Range Complement
 ```
 
 The following token types are used to help direct the operation of the Regex Engine, but are not part of the DFA and should be ignored if encountered:
 
 ```
-[ ] Match Start
-[ ] Match End
+[X] Match Start
+[X] Match End
 ```
 
 ## Appendix
