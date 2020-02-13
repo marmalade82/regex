@@ -5,12 +5,12 @@ with Ada.Characters.Latin_1; use Ada.Characters.Latin_1;
 
 package body Code_Gen_NFAs is
    use State_Transitions;
-   use NFA_Input_Transitions;
-   use NFA_States;
+   use P_NFA_Input_Transitions;
+   use P_FA_States;
    
    function Increment_By(The_Set : Set; The_Increment: Positive) return Set is 
       A_Set : Set := Empty_Set;
-      procedure Do_Increment(The_Position: NFA_States.Cursor) is 
+      procedure Do_Increment(The_Position: P_FA_States.Cursor) is 
          A_State : Natural;
       begin
          A_State := Element(The_Position);
@@ -22,9 +22,9 @@ package body Code_Gen_NFAs is
       return A_Set;
    end Increment_By;
    
-   function Increment_All_Input_Transitions_By(The_Transitions: NFA_Input_Transitions.Map; The_Increment: Positive) return NFA_Input_Transitions.Map is 
+   function Increment_All_Input_Transitions_By(The_Transitions: P_NFA_Input_Transitions.Map; The_Increment: Positive) return P_NFA_Input_Transitions.Map is 
       My_New_Map: Map := Empty_Map;
-      procedure Do_Increment(The_Position: NFA_Input_Transitions.Cursor) is 
+      procedure Do_Increment(The_Position: P_NFA_Input_Transitions.Cursor) is 
          My_States : Set;
       begin
          My_States := Increment_By(Element(The_Position), The_Increment);
@@ -35,7 +35,7 @@ package body Code_Gen_NFAs is
       return My_New_Map;   
    end Increment_All_Input_Transitions_By;
    
-   function Increment_All_Epsilon_Transitions_By(The_Transitions: NFA_States.Set; The_Increment: Positive) return NFA_States.Set is 
+   function Increment_All_Epsilon_Transitions_By(The_Transitions: P_FA_States.Set; The_Increment: Positive) return P_FA_States.Set is 
       My_New_States : Set := Empty_Set;
    begin
       My_New_States := Increment_By(The_Transitions, The_Increment);
@@ -64,7 +64,7 @@ package body Code_Gen_NFAs is
    
    function Update_States_To_Epsilon_Transition_To(The_State_Table: Vector; The_States: Set; The_New_State: Natural) return Vector is 
       My_New_State_Table : Vector := Empty_Vector;
-      procedure Update_Epsilon_Transition(The_Position: NFA_States.Cursor) is 
+      procedure Update_Epsilon_Transition(The_Position: P_FA_States.Cursor) is 
          My_State : Natural;
          My_Transitions : Transitions;
          My_Set : Set := Empty_Set;
@@ -78,7 +78,7 @@ package body Code_Gen_NFAs is
                             epsilon_transitions => My_Set,
                             kind => My_Old_Transitions.kind,
                             range_inputs => Inputs.Copy(My_Old_Transitions.range_inputs),
-                            range_states => NFA_States.Copy(My_Old_Transitions.range_states)
+                            range_states => P_FA_States.Copy(My_Old_Transitions.range_states)
                            );
          Replace_Element(My_New_State_Table, My_State, My_Transitions);
       end Update_Epsilon_Transition;
@@ -99,7 +99,7 @@ package body Code_Gen_NFAs is
                          epsilon_transitions => Empty_Set,
                          kind => By_Char,
                          range_inputs => Inputs.Empty_Set,
-                         range_states => NFA_States.Empty_Set
+                         range_states => P_FA_States.Empty_Set
                         );
       return (
               start => 0,
@@ -139,12 +139,12 @@ package body Code_Gen_NFAs is
       My_Start_Transition := ( input_transitions => Empty_Map,
                                kind => By_Char,
                                range_inputs => Inputs.Empty_Set,
-                               range_states => NFA_States.Empty_Set,
+                               range_states => P_FA_States.Empty_Set,
                                epsilon_transitions => 
-                                 NFA_States.Union( 
+                                 P_FA_States.Union( 
                                    -- transitions to accepting state and start of inner nfa.
-                                   NFA_States.To_Set(My_Inner_Start + Natural(Length(The_NFA.states))),
-                                   NFA_States.To_Set(My_Inner_Start)  
+                                   P_FA_States.To_Set(My_Inner_Start + Natural(Length(The_NFA.states))),
+                                   P_FA_States.To_Set(My_Inner_Start)  
                                   )
                               );
         
@@ -164,8 +164,8 @@ package body Code_Gen_NFAs is
                ( input_transitions => Empty_Map,
                  kind => By_Char,
                  range_inputs => Inputs.Empty_Set,
-                 range_states => NFA_States.Empty_Set,
-                 epsilon_transitions => NFA_States.To_Set(0) -- accepting state can transition back to to start.
+                 range_states => P_FA_States.Empty_Set,
+                 epsilon_transitions => P_FA_States.To_Set(0) -- accepting state can transition back to to start.
                 ),
                accepting => To_Set(My_Inner_Start + Natural(Length(The_NFA.states)))
               );
@@ -188,7 +188,7 @@ package body Code_Gen_NFAs is
           epsilon_transitions => My_New_Start_Epsilon_Trans,
           kind => By_Char,
           range_inputs => Inputs.Empty_Set,
-          range_states => NFA_States.Empty_Set
+          range_states => P_FA_States.Empty_Set
          );
          
       return (
@@ -362,7 +362,7 @@ package body Code_Gen_NFAs is
    function Get_Epsilon_Closure(The_Current_States: Set; The_State_Table: Vector) return Set is 
       My_States : Set := Empty_Set;
       My_New_States: Set := Empty_Set;
-      procedure Get_Epsilon_States(The_Position: NFA_States.Cursor) is 
+      procedure Get_Epsilon_States(The_Position: P_FA_States.Cursor) is 
          My_State : Natural;
          My_Further_States : Set;
          My_Difference : Set;
@@ -396,7 +396,7 @@ package body Code_Gen_NFAs is
       -- First get direct input transitions where possible
       case The_Transitions.kind is 
          when By_Char =>
-            if Find(The_Transitions.input_transitions, The_Input) /= NFA_Input_Transitions.No_Element then 
+            if Find(The_Transitions.input_transitions, The_Input) /= P_NFA_Input_Transitions.No_Element then 
                Union(My_States, Element(The_Transitions.input_transitions, The_Input));
             end if;
          when By_Range => 
@@ -418,7 +418,7 @@ package body Code_Gen_NFAs is
    function Get_New_States(The_States : Set; The_Transitions: Vector; The_Input: Character) return Set is 
       My_New_States : Set := Empty_Set;
       
-      procedure Add_New_States(The_Position: NFA_States.Cursor) is 
+      procedure Add_New_States(The_Position: P_FA_States.Cursor) is 
          My_Current_State : Natural;
          My_Current_Transitions: Transitions;
       begin

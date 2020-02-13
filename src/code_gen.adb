@@ -12,8 +12,8 @@ with Code_Gen_DFAs; use Code_Gen_DFAs;
 package body Code_Gen is
    function Gen_NFA(The_Node: Regex_AST.Cursor) return NFA;
    use State_Transitions;
-   use NFA_Input_Transitions;
-   use NFA_States;
+   use P_NFA_Input_Transitions;
+   use P_FA_States;
    
    function Recognize(The_Machine: NFA; The_Input: Unbounded_String) return Boolean is 
    begin
@@ -22,7 +22,7 @@ package body Code_Gen is
    
    function Has_Transitions_For_Input(The_Transitions: Transitions; c: Character) return Boolean is 
    begin 
-      return (not Is_Empty(The_Transitions.epsilon_transitions)) or else Find(The_Transitions.input_transitions, c) /= NFA_Input_Transitions.No_Element;
+      return (not Is_Empty(The_Transitions.epsilon_transitions)) or else Find(The_Transitions.input_transitions, c) /= P_NFA_Input_Transitions.No_Element;
    end Has_Transitions_For_Input;
 
    function Gen_Character(The_Token : Abstract_Syntax_Token; The_Node: Regex_AST.Cursor) return NFA is 
@@ -151,7 +151,7 @@ package body Code_Gen is
       if My_First_Child /= Regex_AST.No_Element then          
          My_Optional_NFA := Gen_NFA(My_First_Child);
          
-         NFA_States.Insert(My_Optional_NFA.accepting, My_Optional_NFA.start);
+         P_FA_States.Insert(My_Optional_NFA.accepting, My_Optional_NFA.start);
          
          return My_Optional_NFA; 
       else 

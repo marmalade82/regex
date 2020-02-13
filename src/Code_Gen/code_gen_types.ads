@@ -7,7 +7,15 @@ with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 
 package Code_Gen_Types is
    
+   
+   
+   
+   
+   
    function Charac_Hash(The_Key: Character) return Ada.Containers.Hash_Type;
+   
+   
+   
    
    package Inputs is new Ada.Containers.Hashed_Sets 
      ( Element_Type => Character,
@@ -15,32 +23,51 @@ package Code_Gen_Types is
        Equivalent_Elements => Standard."="
       );
    
+   subtype FA_Inputs is Inputs.Set;
+   
+   procedure Iter(The_Inputs: FA_Inputs; The_Proc: not null access procedure (The_Input : in Character));
+   
    function Natural_Hash(The_El: Natural) return Ada.Containers.Hash_Type;
    
-   package NFA_States is new Ada.Containers.Hashed_Sets
+   package P_FA_States is new Ada.Containers.Hashed_Sets
      ( Element_Type => Natural,
        Hash => Natural_Hash,
        Equivalent_Elements => Standard."="
       );
    
+   subtype FA_States is P_FA_States.Set;
+   
+   procedure Iter(The_States : FA_States; The_Proc: not null access procedure (The_Input : in Natural));
+   
    function Equiv_Keys (The_Left, The_Right: Character) return Boolean;
    
-   package NFA_Input_Transitions is new Ada.Containers.Hashed_Maps
+   package P_NFA_Input_Transitions is new Ada.Containers.Hashed_Maps
      ( Key_Type => Character,
-       Element_Type => NFA_States.Set,
+       Element_Type => P_FA_States.Set,
        Hash => Charac_Hash,
        Equivalent_Keys => Equiv_Keys,
-       "=" => NFA_States."="
+       "=" => P_FA_States."="
       );
+   
+   subtype NFA_Input_Transitions is P_NFA_Input_Transitions.Map;
+   
+   function Transition_Exists(The_Transitions: NFA_Input_Transitions; The_Input : Character) return Boolean;
+   
+   procedure Add_Transitions_For_Input(The_Transitions: in out NFA_Input_Transitions; The_Input: Character; The_Dests : FA_States);
+   
+   procedure Iter(The_Transitions : NFA_Input_Transitions; 
+                  The_Proc : not null access procedure (The_Key : in Character; The_Element : P_FA_States.Set));
+   
+   function Empty return P_NFA_Input_Transitions.Map;
    
    type Transition_Kind is (By_Char, By_Range, By_Range_Complement);
    
    type Transitions is record 
-      input_transitions: NFA_Input_Transitions.Map;
-      epsilon_transitions: NFA_States.Set;
+      input_transitions: P_NFA_Input_Transitions.Map;
+      epsilon_transitions: P_FA_States.Set;
       kind: Transition_Kind;
-      range_inputs: Inputs.Set;
-      range_states: NFA_States.Set;
+      range_inputs: FA_Inputs;
+      range_states: P_FA_States.Set;
    end record;	
    
    function Equal_Transitions(The_Left, The_Right : Transitions) return Boolean;
@@ -54,12 +81,12 @@ package Code_Gen_Types is
    type NFA is record
       start: Natural;
       states: State_Transitions.Vector;
-      accepting: NFA_States.Set;
+      accepting: P_FA_States.Set;
    end record;
    
-   function As_String(The_States: NFA_States.Set) return String;
+   function As_String(The_States: P_FA_States.Set) return String;
    
-   function As_String(The_Input_Transitions: NFA_Input_Transitions.Map) return String;
+   function As_String(The_Input_Transitions: P_NFA_Input_Transitions.Map) return String;
    
    function Empty_Transitions return Transitions;
    
@@ -71,6 +98,8 @@ package Code_Gen_Types is
        Element_Type => Natural,
        Equivalent_Keys => Standard."="
       );
+   
+   function Empty return DFA_Input_Transitions.Map;
    
    type DFA_Transitions is record 
       input_transitions : DFA_Input_Transitions.Map;
@@ -87,12 +116,12 @@ package Code_Gen_Types is
    type DFA is record 
       start: Natural;
       states : DFA_States.Vector;
-      accepting : NFA_States.Set; -- Just like NFAs, DFAs have a set of accepting states.
+      accepting : P_FA_States.Set; -- Just like NFAs, DFAs have a set of accepting states.
    end record;
   
    type DFA_State is record 
       number: Natural;
-      state: NFA_States.Set;
+      state: P_FA_States.Set;
    end record;
    
    function "=" (The_Left, The_Right : DFA_State ) return Boolean;
@@ -108,5 +137,7 @@ package Code_Gen_Types is
    
    function Dequeue(The_Queue: in out DFA_States_Queue.List; The_Element : out DFA_State) return Boolean;
      
-
+   
+   
+   
 end Code_Gen_Types;

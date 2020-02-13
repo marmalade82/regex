@@ -4,8 +4,8 @@ with Ada.Strings.Hash;
 
 package body Code_Gen_Types is
    use State_Transitions;
-   use NFA_Input_Transitions;
-   use NFA_States;
+   use P_NFA_Input_Transitions;
+   use P_FA_States;
 
    function Charac_Hash(The_Key: Character) return Ada.Containers.Hash_Type is 
    begin 
@@ -30,7 +30,7 @@ package body Code_Gen_Types is
    
    function As_String(The_States: Set) return String is 
       My_Str : Unbounded_String := To_Unbounded_String("");
-      procedure Accumulate(The_Position : NFA_States.Cursor) is 
+      procedure Accumulate(The_Position : P_FA_States.Cursor) is 
       begin
          My_Str := My_Str & Element(The_Position)'Image;
       end Accumulate;
@@ -39,9 +39,9 @@ package body Code_Gen_Types is
       return To_String(My_Str);
    end As_String;
    
-   function As_String(The_Input_Transitions: NFA_Input_Transitions.Map) return String is 
+   function As_String(The_Input_Transitions: P_NFA_Input_Transitions.Map) return String is 
       My_Str : Unbounded_String := To_Unbounded_String("");
-      procedure Accumulate(The_Position : NFA_Input_Transitions.Cursor) is 
+      procedure Accumulate(The_Position : P_NFA_Input_Transitions.Cursor) is 
       begin
          My_Str := My_Str & Key(The_Position) & "->" & As_String(Element(The_Position)) & " ";
       end Accumulate;
@@ -57,7 +57,7 @@ package body Code_Gen_Types is
                epsilon_transitions => Empty_Set,
                kind => By_Char,
                range_inputs => Inputs.Empty_Set,
-               range_states => NFA_States.Empty_Set
+               range_states => P_FA_States.Empty_Set
               );
    end Empty_Transitions; 
    
@@ -93,6 +93,66 @@ package body Code_Gen_Types is
       
       return My_Success;
    end Dequeue;
+
+   procedure Iter(The_Inputs: FA_Inputs; The_Proc: not null access procedure (The_Input : in Character)) is 
+      use Inputs;
+      procedure Run_Proc(The_Position: Inputs.Cursor) is 
+      begin
+         The_Proc(Element(The_Position));
+      end Run_Proc;
+   begin 
+      Iterate(The_Inputs, Run_Proc'Access);
+   end Iter;
+   
+   procedure Iter(The_Transitions : NFA_Input_Transitions; 
+                  The_Proc : not null access procedure (The_Key : in Character; The_Element : P_FA_States.Set)) is 
+      use P_NFA_Input_Transitions;
+      procedure Run_Proc(The_Position: P_NFA_Input_Transitions.Cursor) is 
+      begin
+         The_Proc(Key(The_Position), Element(The_Position));
+      end Run_Proc;
+   begin
+      Iterate(The_Transitions, Run_Proc'Access);
+   end Iter;
+   
+   procedure Iter(The_States : FA_States; The_Proc: not null access procedure (The_Input : in Natural)) is 
+      use P_FA_States;
+      procedure Run_Proc(The_Position : P_FA_States.Cursor) is 
+      begin
+         The_Proc(Element(The_Position));
+      end Run_Proc;
+   begin 
+      Iterate(The_States, Run_Proc'Access);
+   end Iter;
+   
+   function Empty return P_NFA_Input_Transitions.Map is 
+   begin 
+      return P_NFA_Input_Transitions.Empty_Map;
+   end Empty;
+   
+   function Empty return DFA_Input_Transitions.Map is 
+   begin 
+      return DFA_Input_Transitions.Empty_Map;
+   end Empty;
+   
+   function Transition_Exists(The_Transitions: NFA_Input_Transitions; The_Input : Character) return Boolean is 
+      use P_NFA_Input_Transitions;
+   begin 
+      return Find(The_Transitions, The_Input) /= P_NFA_Input_Transitions.No_Element;
+   end Transition_Exists;
+   
+   procedure Add_Transitions_For_Input(The_Transitions: in out NFA_Input_Transitions; The_Input: Character; The_Dests : FA_States) is 
+      use P_NFA_Input_Transitions;
+      My_Old_Dests : FA_States;
+   begin 
+      if not Transition_Exists(The_Transitions, The_Input) then 
+         Insert(The_Transitions, The_Input, The_Dests);
+      else
+         -- We replace with the union
+         My_Old_Dests := Element(The_Transitions, The_Input);
+         Replace(The_Transitions, The_Input, Union(The_Dests, My_Old_Dests)); 
+      end if;
+   end Add_Transitions_For_Input;
 
 
 end Code_Gen_Types;

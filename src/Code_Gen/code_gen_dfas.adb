@@ -10,8 +10,8 @@ with Code_Gen_NFAs; use Code_Gen_NFAs;
 
 package body Code_Gen_DFAs is
    use State_Transitions;
-   use NFA_Input_Transitions;
-   use NFA_States;
+   use P_NFA_Input_Transitions;
+   use P_FA_States;
    
    function String_Hash(The_String : Unbounded_String) return Ada.Containers.Hash_Type is 
    begin
@@ -27,90 +27,65 @@ package body Code_Gen_DFAs is
    
    type DFA_Conversion is record 
       states : DFA_States.Vector;
-      accepting: NFA_States.Set;
+      accepting: FA_States;
    end record;
    
    function Build_Input_Transitions
-     ( The_Current_Transitions: NFA_Input_Transitions.Map;
+     ( The_Current_Transitions: NFA_Input_Transitions;
        The_NFA_State_Table : State_Transitions.Vector
-      ) return NFA_Input_Transitions.Map is
+      ) return NFA_Input_Transitions is
       
-      My_Input_Transitions: NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
-      procedure Add_By_Input(The_Position: NFA_Input_Transitions.Cursor) is 
-         My_Input : Character;
-         My_Closure : NFA_States.Set;
-         My_Old_Closure: NFA_States.Set;
+      My_Input_Transitions: NFA_Input_Transitions := Empty;
+      procedure Add_By_Input(The_Input: Character; The_Destinations: FA_States) is 
+         My_Closure : FA_States;
+         My_Old_Closure: FA_States;
       begin 
-         My_Input := Key(The_Position);
-         My_Closure := Get_Epsilon_Closure( Element(The_Position), The_NFA_State_Table );
+         My_Closure := Get_Epsilon_Closure( The_Destinations, The_NFA_State_Table );
                
-         if NFA_Input_Transitions.Find(My_Input_Transitions, My_Input) = NFA_Input_Transitions.No_Element then 
-            NFA_Input_Transitions.Insert(My_Input_Transitions, My_Input, My_Closure);
-         else
-            -- We replace with the union
-            My_Old_Closure := Element(My_Input_Transitions, My_Input);
-            NFA_Input_Transitions.Replace(My_Input_Transitions, My_Input, Union(My_Closure, My_Old_Closure)); 
-         end if;
+         Add_Transitions_For_Input(My_Input_Transitions, The_Input, My_Closure);
                
          -- once we're done with this procedure, we've augmented the known set that the DFA can reach from the current state
          -- using the given input pointed at by The_Position.
       end Add_By_Input;
    begin 
-      Iterate(The_Current_Transitions, Add_By_Input'Access);
+      Iter(The_Current_Transitions, Add_By_Input'Access);
       
       return My_Input_Transitions;
    
    end Build_Input_Transitions;
    
-   function Merge( The_Left : NFA_Input_Transitions.Map; The_Right : NFA_Input_Transitions.Map) return NFA_Input_Transitions.Map is 
-      My_New_Map : NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
-         
-      procedure Add_Entry(The_Position : NFA_Input_Transitions.Cursor) is 
-         My_Input : Character;
-         My_New_Entry : NFA_States.Set;
+   function Merge( The_Left : NFA_Input_Transitions; The_Right : NFA_Input_Transitions) return NFA_Input_Transitions is 
+      use P_NFA_Input_Transitions;
+      My_New_Map : NFA_Input_Transitions := Empty;
+      procedure Add_Entry(The_Input : Character; The_States : FA_States) is 
       begin
-         My_Input := NFA_Input_Transitions.Key(The_Position);
-         
-         
-         if NFA_Input_Transitions.Find(My_New_Map, My_Input) = NFA_Input_Transitions.No_Element then
-            NFA_Input_Transitions.Insert(My_New_Map, My_Input, NFA_Input_Transitions.Element(The_Position));
-         else
-            My_New_Entry := NFA_States.Union
-              ( NFA_Input_Transitions.Element(The_Left, My_Input),
-                NFA_Input_Transitions.Element(The_Position));
-                                                         
-            NFA_Input_Transitions.Replace(My_New_Map, My_Input, My_New_Entry); 
-         end if;
-            
+         Add_Transitions_For_Input(My_New_Map, The_Input, The_States);
       end Add_Entry;
    begin
-      My_New_Map := NFA_Input_Transitions.Copy(The_Left);
-         
-      Iterate(The_Right, Add_Entry'Access);
+      My_New_Map := Copy(The_Left);
+      Iter(The_Right, Add_Entry'Access);
          
       return My_New_Map;
    end Merge;
    
    function Convert_Range_Transitions
-     ( The_Inputs : Inputs.Set; 
-       The_States: NFA_States.Set) return NFA_Input_Transitions.Map is 
+     ( The_Inputs : FA_Inputs; 
+       The_States: FA_States) return NFA_Input_Transitions is 
       
-      My_Input_Transitions : NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
-      procedure Convert(The_Position: Inputs.Cursor) is
-         My_Input : Character;
+      My_Input_Transitions : NFA_Input_Transitions := P_NFA_Input_Transitions.Empty_Map;
+      procedure Convert(The_Input: Character) is
       begin 
-         My_Input := Inputs.Element(The_Position);
-         NFA_Input_Transitions.Insert(My_Input_Transitions, My_Input, The_States);
+         Add_Transitions_For_Input(My_Input_Transitions, The_Input, The_States);
       end Convert;
    begin 
-      Inputs.Iterate( The_Inputs, Convert'Access);
+      Iter( The_Inputs, Convert'Access);
       
       return My_Input_Transitions;
    end Convert_Range_Transitions;
    
    type NFA_Range_Complement is record 
-      complement: Inputs.Set;
-      destinations: NFA_States.Set;
+      complement: FA_Inputs;
+      destinations: FA_States;
    end record;
    
    package NFA_Range_Complements is new Ada.Containers.Vectors
@@ -119,26 +94,24 @@ package body Code_Gen_DFAs is
          );
    
    type Transitions_For_State is record 
-      input_transitions : NFA_Input_Transitions.Map;
+      input_transitions : NFA_Input_Transitions;
       range_complements: NFA_Range_Complements.Vector;
    end record;
    
    
    function Build_Transitions_For_A_State
-     (DFA_State : NFA_States.Set; 
+     (DFA_State : FA_States; 
       The_NFA_State_Table : State_Transitions.Vector) 
       return Transitions_For_State is
       
-      My_Input_Transitions: NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
+      My_Input_Transitions: NFA_Input_Transitions := P_NFA_Input_Transitions.Empty_Map;
       My_Range_Complements: NFA_Range_Complements.Vector := NFA_Range_Complements.Empty_Vector;
       
-      procedure Build_Transition(The_Position : NFA_States.Cursor) is
-         My_NFA_State : Natural;
+      procedure Build_Transition(The_State : Natural) is
          My_Transitions : Transitions;
-         My_Range_Transitions: NFA_Input_Transitions.Map;
+         My_Range_Transitions: NFA_Input_Transitions;
       begin 
-         My_NFA_State := Element(The_Position);
-         My_Transitions := Element(The_NFA_State_Table, My_NFA_State);
+         My_Transitions := Element(The_NFA_State_Table, The_State);
          
          case My_Transitions.kind is 
             when By_Char =>
@@ -162,7 +135,7 @@ package body Code_Gen_DFAs is
          -- valid input transitions, we've tossed all the epsilon closures into our tracking map.
       end Build_Transition;
    begin
-      Iterate(DFA_State, Build_Transition'Access);
+      Iter(DFA_State, Build_Transition'Access);
       
       return ( input_transitions => My_Input_Transitions,
                range_complements => My_Range_Complements
@@ -170,13 +143,13 @@ package body Code_Gen_DFAs is
    end Build_Transitions_For_A_State;
    
    type Complement_Conversion is record
-      input_transitions : NFA_Input_Transitions.Map;
-      complement_inputs : Inputs.Set;
-      complement_transitions: NFA_States.Set;
+      input_transitions : NFA_Input_Transitions;
+      complement_inputs : FA_Inputs;
+      complement_transitions: FA_States;
    end record;
    
-   function Merge_Inputs(The_Complements : NFA_Range_Complements.Vector) return Inputs.Set is 
-      My_Set : Inputs.Set := Inputs.Empty_Set;
+   function Merge_Inputs(The_Complements : NFA_Range_Complements.Vector) return FA_Inputs is 
+      My_Set : FA_Inputs := Inputs.Empty_Set;
          
       procedure Build_Set(The_Position : NFA_Range_Complements.Cursor) is 
          My_Complement : NFA_Range_Complement;
@@ -191,28 +164,25 @@ package body Code_Gen_DFAs is
    
    -- given a set of complements, this function maps each element of each complement to the states
    -- it should go to afterward
-   function Generate_Complement_Map(The_Complements: NFA_Range_Complements.Vector) return NFA_Input_Transitions.Map is
-      My_Total_Inputs : Inputs.Set := Inputs.Empty_Set;
-      My_Complement_Map : NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
+   function Generate_Complement_Map(The_Complements: NFA_Range_Complements.Vector) return NFA_Input_Transitions is
+      My_Total_Inputs : FA_Inputs := Inputs.Empty_Set;
+      My_Complement_Map : NFA_Input_Transitions := P_NFA_Input_Transitions.Empty_Map;
       
-      function Gen_Map(The_Inputs : Inputs.Set; The_States : NFA_States.Set) return NFA_Input_Transitions.Map is 
-         My_Map : NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
+      function Gen_Map(The_Inputs : FA_Inputs; The_States : FA_States) return NFA_Input_Transitions is 
+         My_Map : NFA_Input_Transitions := P_NFA_Input_Transitions.Empty_Map;
          
-         procedure Add_Input(The_Position : Inputs.Cursor) is 
-            My_Input : Character;
+         procedure Add_Input(The_Input : Character) is 
          begin
-            My_Input := Inputs.Element(The_Position);
-            NFA_Input_Transitions.Insert(My_Map, My_Input, The_States);
+            P_NFA_Input_Transitions.Insert(My_Map, The_Input, The_States);
          end Add_Input;
       begin 
-         Inputs.Iterate(The_Inputs, Add_Input'Access);
-         
+         Iter(The_Inputs, Add_Input'Access);
          return My_Map;
       end Gen_Map;
       
       procedure Build_Map(The_Position: NFA_Range_Complements.Cursor) is 
          My_Complement : NFA_Range_Complement;
-         My_Excluded_Inputs : Inputs.Set := Inputs.Empty_Set;
+         My_Excluded_Inputs : FA_Inputs := Inputs.Empty_Set;
       begin 
          My_Complement := NFA_Range_Complements.Element(The_Position);
          
@@ -233,13 +203,13 @@ package body Code_Gen_DFAs is
    end Generate_Complement_Map;
    
    -- Returns a set of NFA states: the union of all the complement destinations.
-   function Generate_Complement_Transitions(The_Complements : NFA_Range_Complements.Vector) return NFA_States.Set is 
-      My_Transitions : NFA_States.Set := NFA_States.Empty_Set;
+   function Generate_Complement_Transitions(The_Complements : NFA_Range_Complements.Vector) return FA_States is 
+      My_Transitions : FA_States := P_FA_States.Empty_Set;
       procedure Build_Transition(The_Position: NFA_Range_Complements.Cursor) is 
          My_Complement : NFA_Range_Complement;
       begin 
          My_Complement := NFA_Range_Complements.Element(The_Position);
-         NFA_States.Union(My_Transitions, My_Complement.destinations);
+         P_FA_States.Union(My_Transitions, My_Complement.destinations);
       end Build_Transition;
    begin 
       NFA_Range_Complements.Iterate(The_Complements, Build_Transition'Access);
@@ -249,44 +219,44 @@ package body Code_Gen_DFAs is
    -- For each input transition, if the input is missing from a complement,
    -- the complement's destinations are added to the input transition.
    function Add_Complement_Destinations
-     (The_Input_Transitions : NFA_Input_Transitions.Map;
-      The_Complements : NFA_Range_Complements.Vector) return NFA_Input_Transitions.Map is
+     (The_Input_Transitions : NFA_Input_Transitions;
+      The_Complements : NFA_Range_Complements.Vector) return NFA_Input_Transitions is
       
-      My_Map : NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
-      procedure Check_Complements(The_Position: NFA_Input_Transitions.Cursor) is 
-         use NFA_Input_Transitions;
+      My_Map : NFA_Input_Transitions := P_NFA_Input_Transitions.Empty_Map;
+      procedure Check_Complements(The_Position: P_NFA_Input_Transitions.Cursor) is 
+         use P_NFA_Input_Transitions;
          My_Input : Character;
          procedure Add_To_Map(The_Position: NFA_Range_Complements.Cursor) is 
             My_Complement: NFA_Range_Complement;
-            My_Replacement : NFA_States.Set;
-            My_Position : NFA_Input_Transitions.Cursor;
+            My_Replacement : FA_States;
+            My_Position : P_NFA_Input_Transitions.Cursor;
          begin 
             My_Complement := NFA_Range_Complements.Element(The_Position);
             
             if not Inputs.Contains(My_Complement.complement, My_Input) then 
                My_Position := Find(My_Map, My_Input);
-               if My_Position = NFA_Input_Transitions.No_Element then 
+               if My_Position = P_NFA_Input_Transitions.No_Element then 
                   Insert(My_Map, My_Input, My_Complement.destinations);
                else 
-                  My_Replacement := NFA_States.Union(My_Complement.destinations, Element(My_Position));
-                  NFA_Input_Transitions.Replace_Element(My_Map, My_Position, My_Replacement);
+                  My_Replacement := P_FA_States.Union(My_Complement.destinations, Element(My_Position));
+                  P_NFA_Input_Transitions.Replace_Element(My_Map, My_Position, My_Replacement);
                end if;
             end if;
          end Add_To_Map;
       begin
-         My_Input := NFA_Input_Transitions.Key(The_Position);
+         My_Input := P_NFA_Input_Transitions.Key(The_Position);
          
          NFA_Range_Complements.Iterate(The_Complements, Add_To_Map'Access);
       end Check_Complements;
    begin
-      NFA_Input_Transitions.Iterate(The_Input_Transitions, Check_Complements'Access);
+      P_NFA_Input_Transitions.Iterate(The_Input_Transitions, Check_Complements'Access);
       return Merge(The_Input_Transitions, My_Map);
    end Add_Complement_Destinations;
    
    function Convert_Complement(The_Transitions : Transitions_For_State) return Complement_Conversion is 
-      My_Input_Transitions : NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map;
-      My_Complement_Transitions : NFA_States.Set := NFA_States.Empty_Set;
-      My_Complement_Input_Map : NFA_Input_Transitions.Map;
+      My_Input_Transitions : NFA_Input_Transitions := P_NFA_Input_Transitions.Empty_Map;
+      My_Complement_Transitions : FA_States := P_FA_States.Empty_Set;
+      My_Complement_Input_Map : NFA_Input_Transitions;
    begin 
       
       -- 
@@ -317,7 +287,7 @@ package body Code_Gen_DFAs is
               );
    end Convert_Complement;
    
-   function To_Key(The_State: NFA_States.Set) return Unbounded_String is
+   function To_Key(The_State: FA_States) return Unbounded_String is
       My_String : Unbounded_String := To_Unbounded_String("");
       package State_Sorter is new Ada.Containers.Vectors
         (Index_Type   => Natural,
@@ -327,9 +297,9 @@ package body Code_Gen_DFAs is
         ("<" => Standard."<");
       My_Sorter : State_Sorter.Vector;
       
-      procedure Build_Sorter(The_Position : NFA_States.Cursor) is 
+      procedure Build_Sorter(The_Position : P_FA_States.Cursor) is 
       begin 
-         State_Sorter.Append(My_Sorter, NFA_States.Element(The_Position));
+         State_Sorter.Append(My_Sorter, P_FA_States.Element(The_Position));
       end Build_Sorter;
       
       procedure Build_String(The_Position: State_Sorter.Cursor) is 
@@ -337,26 +307,26 @@ package body Code_Gen_DFAs is
          My_String := My_String & State_Sorter.Element(The_Position)'Image;
       end Build_String;
    begin 
-      NFA_States.Iterate(The_State, Build_Sorter'Access);
+      P_FA_States.Iterate(The_State, Build_Sorter'Access);
       State_Sorting.Sort(My_Sorter);
       State_Sorter.Iterate(My_Sorter, Build_String'Access);
       Put_Line("Built key: " & To_String(My_String));
       return My_String;
    end To_Key;
    
-   function Is_New_State(Global_Seen_States: in out Seen_States.Map; The_State: NFA_States.Set) return Boolean is 
+   function Is_New_State(Global_Seen_States: in out Seen_States.Map; The_State: FA_States) return Boolean is 
       use Seen_States;
    begin
       return Seen_States.Find(Global_Seen_States, To_Key(The_State)) = Seen_States.No_Element;
    end Is_New_State;
    
    --This function will throw if the state can't be found.
-   function Get_State_Number(Global_Seen_States: in out Seen_States.Map; The_State: NFA_States.Set) return Natural is 
+   function Get_State_Number(Global_Seen_States: in out Seen_States.Map; The_State: FA_States) return Natural is 
    begin
       return Seen_States.Element(Seen_States.Find(Global_Seen_States, To_Key(The_State)));
    end Get_State_Number;
    
-   procedure Assign_State_Number(Global_Seen_States: in out Seen_States.Map; The_State: NFA_States.Set; The_Number: Natural) is 
+   procedure Assign_State_Number(Global_Seen_States: in out Seen_States.Map; The_State: FA_States; The_Number: Natural) is 
    begin
       Seen_States.Insert(Global_Seen_States, To_Key(The_State), The_Number);
    end Assign_State_Number;
@@ -364,8 +334,8 @@ package body Code_Gen_DFAs is
    function Build_DFA_Transitions
      (The_NFA_Transitions : Complement_Conversion; 
       The_Last_Used_State_Number: in out Natural;
-      The_NFA_Accepting : NFA_States.Set;
-      The_DFA_Accepting : in out NFA_States.Set;
+      The_NFA_Accepting : FA_States;
+      The_DFA_Accepting : in out FA_States;
       The_Queue : in out DFA_States_Queue.List;
       The_Complement_Number: out Natural;
       Global_Seen_States: in out Seen_States.Map
@@ -374,9 +344,9 @@ package body Code_Gen_DFAs is
       
       My_DFA_Transitions: DFA_Input_Transitions.Map;
       My_State_Number : Natural;
-      procedure Build_Transitions(The_Position : NFA_Input_Transitions.Cursor) is 
+      procedure Build_Transitions(The_Position : P_NFA_Input_Transitions.Cursor) is 
          My_Input : Character;
-         My_State : NFA_States.Set;
+         My_State : FA_States;
       begin 
          -- During DFA generation from an NFA, how do make sure that we see each state once,
          -- and only once? For example, a wildcard involves looping back on itself, and can always
@@ -392,7 +362,7 @@ package body Code_Gen_DFAs is
          -- We could also add it up into the number 1379, but here there's a possibility for overflow. Of course,
          -- doing this as a string could lead to really long keys in the hash table. But perhaps that's okay? At least for now.
          
-         My_State := NFA_Input_Transitions.Element(The_Position);
+         My_State := P_NFA_Input_Transitions.Element(The_Position);
          My_Input := Key(The_Position);
          
          if Is_New_State(Global_Seen_States, My_State) then 
@@ -407,8 +377,8 @@ package body Code_Gen_DFAs is
          
             -- We can also check whether the current set of NFA states has any intersection with 
             -- the set of NFA accepting states. If so, the current state is an accepting state.
-            if not NFA_States.Is_Empty( NFA_States.Intersection(My_State, The_NFA_Accepting) ) then
-               NFA_States.Insert(The_DFA_Accepting, My_State_Number);
+            if not P_FA_States.Is_Empty( P_FA_States.Intersection(My_State, The_NFA_Accepting) ) then
+               P_FA_States.Insert(The_DFA_Accepting, My_State_Number);
             end if;
          else 
             -- if we've seen this state before, we've analyzed it already.
@@ -438,10 +408,10 @@ package body Code_Gen_DFAs is
             My_State_Number := My_State_Number + 1;
             Enqueue(The_Queue, (number => My_State_Number, state => The_NFA_Transitions.complement_transitions));
          
-            if not NFA_States.Is_Empty
-              ( NFA_States.Intersection
+            if not P_FA_States.Is_Empty
+              ( P_FA_States.Intersection
                   (The_NFA_Transitions.complement_transitions, The_NFA_Accepting) ) then
-               NFA_States.Insert(The_DFA_Accepting, My_State_Number);
+               P_FA_States.Insert(The_DFA_Accepting, My_State_Number);
             end if;
             The_Complement_Number := My_State_Number;
             Assign_State_Number(Global_Seen_States, The_NFA_Transitions.complement_transitions, My_State_Number);
@@ -463,10 +433,10 @@ package body Code_Gen_DFAs is
       
       My_DFA_States : DFA_States.Vector := DFA_States.Empty_Vector;
       My_State : DFA_State;
-      My_Input_Transitions : NFA_Input_Transitions.Map := NFA_Input_Transitions.Empty_Map; -- for this state, we will build of the input transitions
+      My_Input_Transitions : NFA_Input_Transitions := P_NFA_Input_Transitions.Empty_Map; -- for this state, we will build of the input transitions
       My_DFA_Transitions : DFA_Input_Transitions.Map := DFA_Input_Transitions.Empty_Map;
       My_State_Number : Natural;
-      My_Accepting : NFA_States.Set := NFA_States.Empty_Set;
+      My_Accepting : FA_States := P_FA_States.Empty_Set;
       My_NFA_Transitions : Transitions_For_State;
       My_NFA_Complement_Conversion : Complement_Conversion;
       My_Complement_State_Number : Natural;
@@ -520,7 +490,7 @@ package body Code_Gen_DFAs is
       end loop;
       
       if The_Start_Is_Accepting then 
-         NFA_States.Union(My_Accepting, NFA_States.To_Set(0));
+         P_FA_States.Union(My_Accepting, P_FA_States.To_Set(0));
       end if;
       
       return (
@@ -530,7 +500,7 @@ package body Code_Gen_DFAs is
    end Build_DFA_States;
 
    function DFA_States_From_NFA(The_NFA : NFA) return DFA_Conversion is 
-      My_Start_State : NFA_States.Set;
+      My_Start_State : FA_States;
       My_DFA_States : DFA_States.Vector := DFA_States.Empty_Vector ;
       My_Queue : DFA_States_Queue.List := DFA_States_Queue.Empty_List;
       My_State_Number : Natural := 0;
@@ -556,13 +526,13 @@ package body Code_Gen_DFAs is
       
       -- The first state of the DFA corresponds to the epsilon closure of the start states of 
       -- the NFA.
-      My_Start_State := Get_Epsilon_Closure( NFA_States.To_Set(The_NFA.start), The_NFA.states);
+      My_Start_State := Get_Epsilon_Closure( P_FA_States.To_Set(The_NFA.start), The_NFA.states);
       Put_Line("start state: " & As_String(My_Start_State));
       
       Enqueue(My_Queue, ( number => My_State_Number, state => My_Start_State));
       Assign_State_Number(Global_Seen_States, My_Start_State, My_State_Number);
       
-      Start_Is_Accepting := not NFA_States.Is_Empty( NFA_States.Intersection(The_NFA.accepting, My_Start_State) );
+      Start_Is_Accepting := not P_FA_States.Is_Empty( P_FA_States.Intersection(The_NFA.accepting, My_Start_State) );
       
       return Build_DFA_States (Global_Seen_States, My_Queue, The_NFA, Start_Is_Accepting);
    end DFA_States_From_NFA;
