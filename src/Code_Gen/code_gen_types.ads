@@ -37,6 +37,8 @@ package Code_Gen_Types is
    
    subtype FA_States is P_FA_States.Set;
    
+   procedure Merge(The_Container : in out FA_States; The_New_States : FA_States);
+   
    procedure Iter(The_States : FA_States; The_Proc: not null access procedure (The_Input : in Natural));
    
    function Equiv_Keys (The_Left, The_Right: Character) return Boolean;
@@ -137,7 +139,33 @@ package Code_Gen_Types is
    
    function Dequeue(The_Queue: in out DFA_States_Queue.List; The_Element : out DFA_State) return Boolean;
      
+   type NFA_Range_Complement is record 
+      complement: FA_Inputs;
+      destinations: FA_States;
+   end record;
    
+   package P_NFA_Range_Complements is new Ada.Containers.Vectors
+        ( Index_Type => Natural,
+          Element_Type => NFA_Range_Complement
+         );
    
+   subtype NFA_Range_Complements is P_NFA_Range_Complements.Vector;
    
+   procedure Iter(The_Transitions : NFA_Range_Complements; 
+                  The_Proc : not null access procedure (The_Element : NFA_Range_Complement));
+   
+   procedure Add_Complement(The_Container : in out NFA_Range_Complements; The_Complement : NFA_Range_Complement);
+   
+   type Transitions_For_State is record 
+      input_transitions : NFA_Input_Transitions;
+      range_complements: NFA_Range_Complements;
+   end record;
+   
+   function Empty return P_NFA_Range_Complements.Vector;
+   
+   type Complement_Conversion is record
+      input_transitions : NFA_Input_Transitions;
+      complement_inputs : FA_Inputs;
+      complement_transitions: FA_States;
+   end record;
 end Code_Gen_Types;

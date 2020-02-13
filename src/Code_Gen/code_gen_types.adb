@@ -93,6 +93,23 @@ package body Code_Gen_Types is
       
       return My_Success;
    end Dequeue;
+   
+   procedure Merge(The_Container : in out FA_States; The_New_States : FA_States) is 
+      use P_FA_States;
+   begin
+      Union(The_Container, The_New_States);
+   end Merge;
+   
+   procedure Iter(The_Transitions : NFA_Range_Complements; 
+                  The_Proc : not null access procedure (The_Element : NFA_Range_Complement)) is 
+      use P_NFA_Range_Complements;
+      procedure Run_Proc(The_Position : P_NFA_Range_Complements.Cursor) is 
+      begin
+         The_Proc( Element(The_Position));
+      end Run_Proc;
+   begin
+      Iterate(The_Transitions, Run_Proc'Access);
+   end Iter;
 
    procedure Iter(The_Inputs: FA_Inputs; The_Proc: not null access procedure (The_Input : in Character)) is 
       use Inputs;
@@ -135,6 +152,11 @@ package body Code_Gen_Types is
       return DFA_Input_Transitions.Empty_Map;
    end Empty;
    
+   function Empty return P_NFA_Range_Complements.Vector is 
+   begin 
+      return P_NFA_Range_Complements.Empty_Vector;
+   end Empty;
+   
    function Transition_Exists(The_Transitions: NFA_Input_Transitions; The_Input : Character) return Boolean is 
       use P_NFA_Input_Transitions;
    begin 
@@ -154,5 +176,9 @@ package body Code_Gen_Types is
       end if;
    end Add_Transitions_For_Input;
 
+   procedure Add_Complement(The_Container : in out NFA_Range_Complements; The_Complement : NFA_Range_Complement) is 
+   begin 
+      P_NFA_Range_Complements.Append(The_Container, The_Complement);
+   end Add_Complement;
 
 end Code_Gen_Types;
