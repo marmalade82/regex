@@ -250,7 +250,6 @@ package body Code_Gen_DFAs is
       P_FA_States.Iterate(The_State, Build_Sorter'Access);
       State_Sorting.Sort(My_Sorter);
       State_Sorter.Iterate(My_Sorter, Build_String'Access);
-      Put_Line("Built key: " & To_String(My_String));
       return My_String;
    end To_Key;
    
@@ -306,13 +305,11 @@ package body Code_Gen_DFAs is
          My_Input := Key(The_Position);
          
          if Is_New_State(Global_Seen_States, My_State) then 
-            Put_Line("Found new state");
             My_State_Number := My_State_Number + 1;
             
             -- we've queued up the state that this input goes to.
             Enqueue(The_Queue, (number => My_State_Number, state => My_State));
             DFA_Input_Transitions.Insert(My_DFA_Transitions, My_Input, My_State_Number);
-            Put_Line("Assigning with key : " & To_String( To_Key(My_State) ));
             Assign_State_Number(Global_Seen_States, My_State, My_State_Number);
          
             -- We can also check whether the current set of NFA states has any intersection with 
@@ -384,10 +381,8 @@ package body Code_Gen_DFAs is
       My_State_Number := 0; -- initially the last known state number is 0, since the queue starts with one thing in it.
       while Dequeue(The_States_Queue, My_State) loop
          -- Note : The 0th state never gets assessed for having one of the accepting states.
-         Put_Line("dequeued: " & As_String(My_State.state) & ", which is state " & My_State.number'Image);
          My_NFA_Transitions := Build_Transitions_For_A_State(My_State.state, The_NFA.states);
          My_Input_Transitions := My_NFA_Transitions.input_transitions;
-         Put_Line("transitions : " & As_String(My_Input_Transitions));
             
     
          My_NFA_Complement_Conversion := Convert_Complement(My_NFA_Transitions);
@@ -467,7 +462,6 @@ package body Code_Gen_DFAs is
       -- The first state of the DFA corresponds to the epsilon closure of the start states of 
       -- the NFA.
       My_Start_State := Get_Epsilon_Closure( P_FA_States.To_Set(The_NFA.start), The_NFA.states);
-      Put_Line("start state: " & As_String(My_Start_State));
       
       Enqueue(My_Queue, ( number => My_State_Number, state => My_Start_State));
       Assign_State_Number(Global_Seen_States, My_Start_State, My_State_Number);
@@ -495,7 +489,6 @@ package body Code_Gen_DFAs is
       -- This is the start of converting, so we need to reset globals.
       
       My_Conversion := DFA_States_From_NFA(The_NFA);
-      Put_Line("accepting states are " & As_String(My_Conversion.accepting));
       return (
               start => 0,
               states => My_Conversion.states,

@@ -433,7 +433,14 @@ package body Code_Gen_NFAs is
    end Get_New_States;
    
    function Recognize(The_Machine: NFA; The_Input: Unbounded_String) return Boolean is 
-      My_Input : Character;
+      My_Stream : Str_Char_Stream;
+   begin 
+      My_Stream := Make_Stream(The_Input);
+      return Recognize(The_Machine, My_Stream);
+   end Recognize;
+   
+   function Recognize(The_Machine: NFA; The_Stream: in out Char_Stream'Class) return Boolean is 
+      My_Input: Character;
       The_Current_States : Set;
       My_New_States: Set;
       My_Initial_States: Set;
@@ -443,8 +450,8 @@ package body Code_Gen_NFAs is
       -- check what the next state is.
       My_Initial_States := To_Set(The_Machine.start);
       The_Current_States := Get_Epsilon_Closure(My_Initial_States, The_Machine.states);
-      for I in 1..Length(The_Input) loop
-         My_Input := Element(The_Input, I);
+      while The_Stream.Has_Next loop 
+         My_Input := The_Stream.Next;
          
          -- for each state in the current states, get the new states and append to the new states.
          My_New_States := Empty_Set;
@@ -456,12 +463,10 @@ package body Code_Gen_NFAs is
          else 
             The_Current_States := Copy(My_New_States);
          end if;
-         
       end loop;
       
       -- We consumed all the input, so the successful 
       -- run of the The_Machine determines success.
       return not Is_Empty(Intersection(The_Machine.accepting, The_Current_States));
    end Recognize;
-   
 end Code_Gen_NFAs;

@@ -24,4 +24,10 @@ package Code_Gen_NFAs is
    
    function Get_Epsilon_Closure(The_Current_States: P_FA_States.Set; The_State_Table: State_Transitions.Vector) return P_FA_States.Set;
 
+   
+   function Recognize(The_Machine: NFA; The_Stream: in out Char_Stream'Class) return Boolean;
+
+
+
+      
 end Code_Gen_NFAs;

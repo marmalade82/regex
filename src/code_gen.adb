@@ -260,16 +260,13 @@ package body Code_Gen is
             if My_Current_Transitions.has_complement and not Inputs.Contains(My_Current_Transitions.complement_inputs, My_Input) then 
                My_Current_State := My_Current_Transitions.complement_transition;
             else
-               Put_Line("Couldn't find next transition, failed at state " & My_Current_State'Image & " with input " & My_Input);
                return False;
             end if;
             
          end if;
       end loop;
       
-      -- If we processed all the input, we need to make sure that our final state is an accepting state.
-      Put_Line("Accepting states: " & As_String(The_Machine.accepting) & " current state is " & My_Current_State'Image);
-      
+      -- If we processed all the input, we need to make sure that our final state is an accepting state.      
       return Contains(The_Machine.accepting, My_Current_State);
    end Recognize;
    

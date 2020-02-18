@@ -3,6 +3,31 @@ with Ada.Containers.Hashed_Maps;
 with Ada.Strings.Hash;
 
 package body Code_Gen_Types is
+   function Make_Stream(The_Str: Unbounded_String) return Str_Char_Stream is 
+   begin 
+      return ( M_Current => 0,
+               M_String => The_Str
+             
+              );
+   end Make_Stream;
+
+   overriding
+   function Next(Self: in out Str_Char_Stream) return Character is 
+      My_Char : Character;
+   begin
+      Self.M_Current := Self.M_Current + 1;
+      My_Char := Element(Self.M_String, Self.M_Current);
+      return My_Char;
+   end Next;
+   
+   overriding
+   function Has_Next(Self: Str_Char_Stream) return Boolean is 
+   begin 
+      return Self.M_Current < Natural( Length(Self.M_String)) ;
+   end Has_Next;
+   
+   
+   
    use State_Transitions;
    use P_NFA_Input_Transitions;
    use P_FA_States;

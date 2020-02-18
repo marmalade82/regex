@@ -8,9 +8,17 @@ with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 package Code_Gen_Types is
    
    
+   type Char_Stream is interface;
+   function Has_Next(Self: Char_Stream) return Boolean is abstract;
+   function Next(Self: in out Char_Stream) return Character is abstract;
    
-   
-   
+   type Str_Char_Stream is new Char_Stream with record 
+      M_String: Unbounded_String;
+      M_Current: Natural;
+   end record;
+   function Make_Stream(The_Str: Unbounded_String) return Str_Char_Stream;
+   function Next(Self: in out Str_Char_Stream) return Character;
+   function Has_Next(Self: Str_Char_Stream) return Boolean;   
    
    function Charac_Hash(The_Key: Character) return Ada.Containers.Hash_Type;
    
