@@ -20,10 +20,17 @@ package Code_Gen_Types is
    function Next(Self: in out Str_Char_Stream) return Character;
    function Has_Next(Self: Str_Char_Stream) return Boolean;   
    
+   type Automaton_Result is record 
+      M_Consumed: Unbounded_String;
+      M_Is_Accepted: Boolean;
+      M_Is_Failed: Boolean;
+   end record;
+   
+   type Finite_Automaton is interface;
+   function Consume(Self: in out Finite_Automaton; The_Input: Character) return Automaton_Result is abstract;
+   function Evaluate_Result(Self: Finite_Automaton) return Automaton_Result is abstract;
+   
    function Charac_Hash(The_Key: Character) return Ada.Containers.Hash_Type;
-   
-   
-   
    
    package Inputs is new Ada.Containers.Hashed_Sets 
      ( Element_Type => Character,

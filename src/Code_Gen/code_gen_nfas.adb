@@ -3,6 +3,8 @@ with Parse_Types; use Parse_Types; use Parse_Types.Regex_AST;
 with Ada.Characters.Handling; use Ada.Characters.Handling;
 with Ada.Characters.Latin_1; use Ada.Characters.Latin_1;
 
+
+
 package body Code_Gen_NFAs is
    use State_Transitions;
    use P_NFA_Input_Transitions;
@@ -440,33 +442,58 @@ package body Code_Gen_NFAs is
    end Recognize;
    
    function Recognize(The_Machine: NFA; The_Stream: in out Char_Stream'Class) return Boolean is 
-      My_Input: Character;
-      The_Current_States : Set;
-      My_New_States: Set;
-      My_Initial_States: Set;
+      My_Automaton : N_Finite_Automaton;
+      My_Result : Automaton_Result;
    begin 
-      -- for every character in the input,
-      -- check the current state to get the transition functions, and 
-      -- check what the next state is.
-      My_Initial_States := To_Set(The_Machine.start);
-      The_Current_States := Get_Epsilon_Closure(My_Initial_States, The_Machine.states);
+      My_Automaton := Make_Automaton(The_Machine);
+      My_Result := Evaluate_Result(My_Automaton);
+      
       while The_Stream.Has_Next loop 
-         My_Input := The_Stream.Next;
+         My_Result := My_Automaton.Consume(The_Stream.Next);
          
-         -- for each state in the current states, get the new states and append to the new states.
-         My_New_States := Empty_Set;
-         My_New_States := Get_New_States(The_Current_States, The_Machine.states, My_Input);
-         
-         -- if the new_states are empty, we could not transition on the input at all
-         if Is_Empty(My_New_States) then 
+         if My_Result.M_Is_Failed then 
             return False;
-         else 
-            The_Current_States := Copy(My_New_States);
          end if;
       end loop;
       
       -- We consumed all the input, so the successful 
       -- run of the The_Machine determines success.
-      return not Is_Empty(Intersection(The_Machine.accepting, The_Current_States));
+      return My_Result.M_Is_Accepted;
    end Recognize;
+   
+   function Consume(Self: in out N_Finite_Automaton; The_Input: Character) return Automaton_Result is 
+      My_New_States : Set := Empty_Set;
+   begin
+      My_New_States := Get_New_States(Self.M_Current_States, Self.M_Machine.states, The_Input);
+      Self.M_Current_States := Copy(My_New_States);
+      Append(Self.M_Consumed, The_Input);
+      
+      return Evaluate_Result(Self);
+   end Consume;
+   
+   function Evaluate_Result(Self: N_Finite_Automaton) return Automaton_Result is 
+   begin 
+      if Is_Empty(Self.M_Current_States) then 
+         return ( M_Consumed => Self.M_Consumed,
+                  M_Is_Failed => True,
+                  M_Is_Accepted => False
+                 );
+      else
+         return ( M_Consumed => Self.M_Consumed,
+                  M_Is_Failed => False,
+                  M_Is_Accepted => not Is_Empty(Intersection(Self.M_Machine.accepting, Self.M_Current_States))
+                 );
+      end if; 
+   end Evaluate_Result;
+   
+   function Make_Automaton(The_Machine : NFA) return N_Finite_Automaton is 
+      My_Initial_States: Set;
+   begin 
+      My_Initial_States := Get_Epsilon_Closure(To_Set(The_Machine.start), The_Machine.states);
+      return ( M_Machine => The_Machine,
+               M_Current_States => My_Initial_States,
+               M_Consumed => To_Unbounded_String("")
+              );
+   end Make_Automaton;
+   
 end Code_Gen_NFAs;

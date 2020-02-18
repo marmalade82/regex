@@ -4,6 +4,9 @@ with Parse_Types; use Parse_Types; use Parse_Types.Regex_AST;
 
 
 package Code_Gen_NFAs is
+   use State_Transitions;
+   use P_NFA_Input_Transitions;
+   use P_FA_States;
    
    Invalid_Subtree: exception;
    Unknown_AST_Token: exception;
@@ -24,9 +27,17 @@ package Code_Gen_NFAs is
    
    function Get_Epsilon_Closure(The_Current_States: P_FA_States.Set; The_State_Table: State_Transitions.Vector) return P_FA_States.Set;
 
-   
    function Recognize(The_Machine: NFA; The_Stream: in out Char_Stream'Class) return Boolean;
 
+   type N_Finite_Automaton is new Finite_Automaton with record 
+      M_Current_States: Set;
+      M_Machine: NFA;
+      M_Consumed : Unbounded_String;
+   end record;
+   function Consume(Self: in out N_Finite_Automaton; The_Input: Character) return Automaton_Result;
+   function Evaluate_Result(Self: N_Finite_Automaton) return Automaton_Result;
+   function Make_Automaton(The_Machine : NFA) return N_Finite_Automaton;
+   
 
 
       
