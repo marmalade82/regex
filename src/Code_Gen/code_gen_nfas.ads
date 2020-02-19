@@ -38,7 +38,4 @@ package Code_Gen_NFAs is
    function Evaluate_Result(Self: N_Finite_Automaton) return Automaton_Result;
    function Make_Automaton(The_Machine : NFA) return N_Finite_Automaton;
    
-
-
-      
 end Code_Gen_NFAs;

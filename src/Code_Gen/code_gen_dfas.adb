@@ -495,5 +495,69 @@ package body Code_Gen_DFAs is
               accepting => My_Conversion.accepting
               );
    end NFA_To_DFA;
+   
+   function Recognize(The_Machine: DFA; The_Input: Unbounded_String) return Boolean is 
+      My_Stream : Str_Char_Stream;
+   begin 
+      My_Stream := Make_Stream(The_Input);
+      return Recognize(The_Machine, My_Stream);
+   end Recognize;
+     
+   function Recognize(The_Machine: DFA; The_Stream: in out Char_Stream'Class) return Boolean is 
+      My_Result : Automaton_Result;
+      My_Automaton : D_Finite_Automaton;
+   begin 
+      My_Automaton := Make_Automaton(The_Machine);
+      My_Result := Evaluate_Result(My_Automaton);
+      
+      while The_Stream.Has_Next loop
+         My_Result := My_Automaton.Consume(The_Stream.Next);
+         
+         if My_Result.M_Is_Failed then 
+            return False;
+         end if;
+      end loop;
+      
+      return My_Result.M_Is_Accepted;
+   end Recognize;
+   
+   function Consume(Self: in out D_Finite_Automaton; The_Input: Character) return Automaton_Result is 
+      use DFA_Input_Transitions;
+      My_Current_Transitions : DFA_Transitions;
+   begin 
+      Append(Self.M_Consumed, The_Input);
+      My_Current_Transitions := DFA_States.Element(Self.M_Machine.states, Self.M_Current_State);
+         
+      if DFA_Input_Transitions.Find(My_Current_Transitions.input_transitions, The_Input) /= DFA_Input_Transitions.No_Element then 
+         Self.M_Current_State := DFA_Input_Transitions.Element(My_Current_Transitions.input_transitions, The_Input);
+      else 
+         -- IF we couldn't find the transition in the inputs, perhaps we can use a complement instead.
+         if My_Current_Transitions.has_complement and not Inputs.Contains(My_Current_Transitions.complement_inputs, The_Input) then 
+            Self.M_Current_State := My_Current_Transitions.complement_transition;
+         else
+            Self.M_Failed := True;
+         end if;
+      end if;
+      
+      return Evaluate_Result(Self);
+   end Consume;
+   
+   function Evaluate_Result(Self: D_Finite_Automaton) return Automaton_Result is 
+   begin 
+      return ( M_Consumed => Self.M_Consumed,
+               M_Is_Accepted => Contains(Self.M_Machine.accepting, Self.M_Current_State),
+               M_Is_Failed => Self.M_Failed
+              );
+   end Evaluate_Result;
+   
+   function Make_Automaton(The_Machine : DFA) return D_Finite_Automaton is
+   begin 
+      return ( M_Current_State => The_Machine.start,
+               M_Machine => The_Machine,
+               M_Consumed => To_Unbounded_String(""),
+               M_Failed => False
+             );
+   end Make_Automaton;
+
 
 end Code_Gen_DFAs;
