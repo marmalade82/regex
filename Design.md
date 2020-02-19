@@ -2,7 +2,37 @@
 
 This repository implements a simple lexical analyzer, parser, and code generator for a simplified Regular Expression language.
 
-# Lexical Analyzer
+Tasks:
+
+- [X] Lexical Analysis
+- [X] Parsing
+- [X] Code generation to NFAs
+- [X] Conversion of NFAs to DFAs
+- [ ] Exposing suitable interface for use as a library
+- [ ] Refactoring for abstraction and encapsulation
+- [ ] Implementation of shortcut escape sequences like \s and \d
+
+## Lexical Analysis
+
+Lexical analysis is simple, as each token uses a lexeme of at most 2 characters. Most lexemes will consist of a single character. Two-character lexemes are escape sequences consisting of '\' and the escaped character; e.g. "\c", "\\\\", "\n", etc. Tokens will have the following classes:
+
+- [X] Character
+- [X] LeftBracket 
+- [X] RightBracket
+- [X] LeftParen 
+- [X] RightParen
+- [X] Union 
+- [X] Optional 
+- [X] RepeatOrZero
+- [X] RepeatOrOne 
+- [X] Hyphen 
+- [X] EOF
+- [X] Newline Tab
+- [X] Error 
+
+Lexical analysis should allow for the following error handling:
+
+- [ ] If an unknown token is detected, an Error Token containing the position of the start of the unknown token should be emitted for use by the rest of the compiler. There should be an Error layer between the lexer and the parser that stops compilation and reports an error when an error token is encountered.
 
 ## Parsers
 
