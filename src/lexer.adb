@@ -61,12 +61,12 @@ package body Lexer is
                           f_lexeme => Unbounded_Slice(input, 1, 1)
                         )
                      );
-         else -- The previous cases are the only valid cases. This is the error case.
+         else -- The previous cases are the only valid cases. This is the error case, which consumes the remaining input.
             v_output := 
-              ( f_remaining => input,
+              ( f_remaining => To_Unbounded_String(""),
                 f_token => 
                   ( f_class => Error,
-                    f_lexeme => To_Unbounded_String("")
+                    f_lexeme => input
                    )
                );
          end if;

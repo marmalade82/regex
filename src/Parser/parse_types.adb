@@ -5,7 +5,8 @@ package body Parse_Types is
    begin
       v_token :=
         ( f_class => p_class,
-          f_lexeme => p_lexeme
+          f_lexeme => p_lexeme,
+          f_index => 0
          );
       return v_token;
 
@@ -26,7 +27,8 @@ package body Parse_Types is
    function EOF return Token is
    begin
       return ( f_class => EOF,
-               f_lexeme => To_Unbounded_String("!")
+               f_lexeme => To_Unbounded_String("!"),
+               f_index => 0
               );
    end;
 

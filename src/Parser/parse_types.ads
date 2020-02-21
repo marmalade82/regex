@@ -16,6 +16,7 @@ package Parse_Types is
    type Token is record
       f_class : Class;
       f_lexeme: Unbounded_String;
+      f_index: Natural;
    end record;
    
    package Token_Vector is new Ada.Containers.Vectors 

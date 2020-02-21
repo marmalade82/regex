@@ -3,7 +3,7 @@ with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Parse_Types; use Parse_Types; use Parse_Types.Token_Vector;
 use Parse_Types.Regex_AST;
 
-package parser is
+package Parser is
    
    function Get_Tree ( p_tree : Tree ) return Unbounded_String;
    
@@ -14,4 +14,4 @@ package parser is
    function Parse(p_input : Vector; p_tree : out Tree) return Boolean;
    
 
-end parser;
+end Parser;

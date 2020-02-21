@@ -2,7 +2,7 @@ with Ada.Text_IO; use Ada.Text_IO;
 
 with Parse_Terminals; use Parse_Terminals;
 
-package body parser is
+package body Parser is
    function Parse_Expr(p_input : Vector; p_position: in out Natural; 
                        p_tree : out Tree; p_cursor: out Regex_AST.Cursor) return Boolean;
    
@@ -779,4 +779,4 @@ package body parser is
       return input;
    end Get_Tree;
    
-end parser;
+end Parser;
