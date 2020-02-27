@@ -2,6 +2,8 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Lexer; use Lexer;
 with Parse_Types; use Parse_Types;
 with Parser;
+with Code_Gen; use Code_Gen;
+with Code_Gen_Types; use Code_Gen_Types;
 
 package body Regex is
    type Lexer_Output is record 
@@ -16,7 +18,6 @@ package body Regex is
                               when Lexer.Character => Parse_Types.Character,
                               when LeftBracket => Left_Bracket, 
                               when RightBracket => Right_Bracket,
-                          
                               when LeftParen => Left_Paren, 
                               when RightParen => Right_Paren,
                               when Union => Pipe, 
@@ -27,8 +28,8 @@ package body Regex is
                               when EOF => EOF,
                               when Newline => Newline, 
                               when Tab => Tab,
-                              when others =>
-                                raise Cannot_Convert with "Lexer token does not have corresponding parser token: " & The_Output.M_Token.f_class'Image
+                              when Error =>
+                                 raise Cannot_Convert with "Lexer token does not have corresponding parser token: " & The_Output.M_Token.f_class'Image
                           )
                
               );
@@ -45,20 +46,22 @@ package body Regex is
               );
    end Lex;
 
-   function Compile(The_Machine: in out Regex; S: String; The_Error: out Unbounded_String) return Boolean is 
+   function Compile(The_Machine: out Regex; S: String; The_Error: out Unbounded_String) return Boolean is 
       use Parse_Types.Token_Vector;
       My_S : Unbounded_String;
+      My_Remaining: Unbounded_String;
       My_Output : Lexer_Output;
       My_Vector : Token_Vector.Vector := Empty_Vector;
       My_Index : Natural := 0;
       My_AST : Parse_Types.Regex_AST.Tree;
       My_Parse_Success : Boolean;
+      My_DFA : DFA;
    begin 
       The_Error := To_Unbounded_String("");
       My_S := To_Unbounded_String(S);
       
       while Length(My_S) > 0 loop
-         My_Output := Lex(My_S, My_Index, My_S);
+         My_Output := Lex(My_S, My_Index, My_Remaining);
          
          case My_Output.m_token.f_class is 
             when Error => 
@@ -67,22 +70,33 @@ package body Regex is
                My_Vector.Append( Convert_To_Token(My_Output) );
          end case;
          My_Index := My_Index + Length(My_Output.M_Token.f_lexeme);
+         My_S := My_Remaining;
       end loop;
       
-      -- After this loop, we have a full vector of tokens for the parser.
+      -- After this loop, we have a full vector of tokens for the parser, besides the EOF.
+      My_Vector.Append(Parse_Types.EOF);
+      
       -- But we should handle this in a separate function really, to allow for early exist when errors are encountered.
       My_Parse_Success := Parser.Parse(My_Vector, My_AST);
       
       if My_Parse_Success then 
+         My_DFA := Gen_DFA(My_AST);
          
-      else 
-         
+         The_Machine := ( M_Automaton => Make_Automaton(My_DFA)
+                            
+                         );
+         null;
+         -- Here is where we would process parse warnings, since we have errors despite successfully parsing.
+      else
+         -- Here is where we would process parse errors, since the parse failed -- we don't have a tree that 
+         -- can successfully do an NFA generation.
+         null;
       end if;
       
       return True;
    end Compile;
    
-   function Compile(The_Machine: in out Regex; S: String) return Boolean is
+   function Compile(The_Machine: out Regex; S: String) return Boolean is
       My_Error : Unbounded_String;
       My_Success : Boolean;
    begin 
@@ -93,5 +107,14 @@ package body Regex is
       
       return My_Success;
    end Compile;
+   
+   function Test(The_Machine: in out Regex; S: String) return Boolean is 
+      My_Stream: Str_Char_Stream;
+   begin 
+      Reset(The_Machine.M_Automaton);
+      My_Stream := Make_Stream(To_Unbounded_String(S));
+      return Recognize(The_Machine.M_Automaton, My_Stream);
+   end Test;
+   
 
 end Regex;

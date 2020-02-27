@@ -25,5 +25,7 @@ package Code_Gen_DFAs is
    function Consume(Self: in out D_Finite_Automaton; The_Input: Character) return Automaton_Result;
    function Evaluate_Result(Self: D_Finite_Automaton) return Automaton_Result;
    function Make_Automaton(The_Machine : DFA) return D_Finite_Automaton;
+   procedure Reset(The_Machine: in out D_Finite_Automaton);
+   function Recognize(The_Machine: in out D_Finite_Automaton; The_Stream: in out Char_Stream'Class) return Boolean;
 
 end Code_Gen_DFAs;

@@ -504,21 +504,11 @@ package body Code_Gen_DFAs is
    end Recognize;
      
    function Recognize(The_Machine: DFA; The_Stream: in out Char_Stream'Class) return Boolean is 
-      My_Result : Automaton_Result;
       My_Automaton : D_Finite_Automaton;
    begin 
       My_Automaton := Make_Automaton(The_Machine);
-      My_Result := Evaluate_Result(My_Automaton);
       
-      while The_Stream.Has_Next loop
-         My_Result := My_Automaton.Consume(The_Stream.Next);
-         
-         if My_Result.M_Is_Failed then 
-            return False;
-         end if;
-      end loop;
-      
-      return My_Result.M_Is_Accepted;
+      return Recognize(My_Automaton, The_Stream);
    end Recognize;
    
    function Consume(Self: in out D_Finite_Automaton; The_Input: Character) return Automaton_Result is 
@@ -558,6 +548,29 @@ package body Code_Gen_DFAs is
                M_Failed => False
              );
    end Make_Automaton;
+   
+   function Recognize(The_Machine: in out D_Finite_Automaton; The_Stream: in out Char_Stream'Class) return Boolean is 
+      My_Result : Automaton_Result;
+   begin 
+      My_Result := Evaluate_Result(The_Machine);
+
+      while The_Stream.Has_Next loop
+         My_Result := The_Machine.Consume(The_Stream.Next);
+         
+         if My_Result.M_Is_Failed then 
+            return False;
+         end if;
+      end loop;
+      
+      return My_Result.M_Is_Accepted;
+   end Recognize;
+   
+   -- Resets the machine to be in its start state, for a new run.
+   procedure Reset(The_Machine: in out D_Finite_Automaton) is 
+   begin 
+      The_Machine := Make_Automaton(The_Machine.M_Machine);
+   end Reset;
+
 
 
 end Code_Gen_DFAs;
