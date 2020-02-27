@@ -12,6 +12,7 @@ package Regex is
    
    function Compile(The_Machine: out Regex; S: String) return Boolean;
    
+   -- Tests whether there is any regex match within @S
    function Test(The_Machine: in out Regex; S: String) return Boolean;
 
 end Regex;

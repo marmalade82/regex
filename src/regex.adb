@@ -110,10 +110,34 @@ package body Regex is
    
    function Test(The_Machine: in out Regex; S: String) return Boolean is 
       My_Stream: Str_Char_Stream;
+      Prev_Result : Automaton_Result;
+      Next_Result : Automaton_Result;
    begin 
+      for I in S'First .. S'Last loop 
+         Reset(The_Machine.M_Automaton);
+         My_Stream := Make_Stream(To_Unbounded_String(S (I..S'Last)));
+         -- from beginning to end, we need to consume input until failure, and check upon failure if the last 
+         -- state before failure was accepting. If it was, we match.
+         Next_Result := Evaluate_Result(The_Machine.M_Automaton);
+         Prev_Result := Next_Result;
+         while My_Stream.Has_Next and not Next_Result.M_Is_Failed loop 
+            Prev_Result := Next_Result;
+            Next_Result := The_Machine.M_Automaton.Consume(My_Stream.Next);
+         end loop;
+         
+         -- If we succeeded, we can return True here.
+         -- Otherwise we move on to the next iteration of the loop.
+         if Next_Result.M_Is_Failed and Prev_Result.M_Is_Accepted then 
+            return True;
+         elsif Next_Result.M_Is_Accepted then 
+            return True;
+         end if;
+      end loop;
+      
+      -- Run for empty input evaluation
       Reset(The_Machine.M_Automaton);
       My_Stream := Make_Stream(To_Unbounded_String(S));
-      return Recognize(The_Machine.M_Automaton, My_Stream);
+      return Evaluate_Result(The_Machine.M_Automaton).M_Is_Accepted;
    end Test;
    
 
