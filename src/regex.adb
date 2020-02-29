@@ -140,5 +140,60 @@ package body Regex is
       return Evaluate_Result(The_Machine.M_Automaton).M_Is_Accepted;
    end Test;
    
+   procedure Add_Result(The_Results: in out Results; New_Result : Unbounded_String) is begin 
+      String_Vector.Append(The_Results, New_Result);
+   end Add_Result;
+   
+   function Match(The_Machine: in out Regex; S: String) return Results is 
+      My_Stream: Str_Char_Stream;
+      Initial_Result : Automaton_Result;
+      Prev_Result : Automaton_Result;
+      Next_Result : Automaton_Result;
+      My_Results : Results;
+   begin 
+      -- Run for empty input evaluation
+      Reset(The_Machine.M_Automaton);
+      My_Stream := Make_Stream(To_Unbounded_String(S));
+      Initial_Result := Evaluate_Result(The_Machine.M_Automaton);
+      
+      if Initial_Result.M_Is_Accepted then 
+         Add_Result(My_Results, Initial_Result.M_Consumed);
+      end if;
+      
+      for I in S'First .. S'Last loop 
+         Reset(The_Machine.M_Automaton);
+         My_Stream := Make_Stream(To_Unbounded_String(S (I..S'Last)));
+         
+         Next_Result := Evaluate_Result(The_Machine.M_Automaton);
+         Prev_Result := Next_Result;
+         
+         -- if first result matched, then we have to match.
+         if Prev_Result.M_Is_Accepted then 
+            Add_Result(My_Results, Prev_Result.M_Consumed);
+         end if;
+         
+         -- from beginning to end, we need to consume input until failure, and check upon failure if the last 
+         -- state before failure was accepting. If it was, we matched.
+         while My_Stream.Has_Next and not Next_Result.M_Is_Failed loop 
+            Prev_Result := Next_Result;
+            Next_Result := The_Machine.M_Automaton.Consume(My_Stream.Next);
+         end loop;
+         
+         -- If we succeeded, we can add to the results here.
+         -- Otherwise we move on to the next iteration of the loop.
+         if Next_Result.M_Is_Failed and Prev_Result.M_Is_Accepted then 
+            Add_Result(My_Results, Prev_Result.M_Consumed);
+         elsif Next_Result.M_Is_Accepted then 
+            Add_Result(My_Results, Next_Result.M_Consumed);
+         end if;
+      end loop;
+      
+      return My_Results;
+   end Match;
+
+   function Empty_Results return Results is begin 
+      return String_Vector.Empty_Vector;
+   end Empty_Results;
+
 
 end Regex;

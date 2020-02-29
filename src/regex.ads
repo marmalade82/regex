@@ -1,8 +1,18 @@
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Code_Gen_DFAs; use Code_Gen_DFAs;
+with Ada.Containers.Vectors;
 
 package Regex is
    Cannot_Convert : exception;
+   
+   package String_Vector is new Ada.Containers.Vectors 
+     (Index_Type   => Positive,
+      Element_Type => Unbounded_String,
+      "="          => Ada.Strings.Unbounded."=");
+   
+   subtype Results is String_Vector.Vector;
+   
+   function Empty_Results return Results;
    
    type Regex is record
       M_Automaton: D_Finite_Automaton;
@@ -14,5 +24,10 @@ package Regex is
    
    -- Tests whether there is any regex match within @S
    function Test(The_Machine: in out Regex; S: String) return Boolean;
+   
+   function Match(The_Machine: in out Regex; S: String) return Results;
+     
+   
+   
 
 end Regex;
