@@ -110,34 +110,33 @@ package body Regex is
    
    function Test(The_Machine: in out Regex; S: String) return Boolean is 
       My_Stream: Str_Char_Stream;
-      Prev_Result : Automaton_Result;
       Next_Result : Automaton_Result;
    begin 
-      for I in S'First .. S'Last loop 
-         Reset(The_Machine.M_Automaton);
-         My_Stream := Make_Stream(To_Unbounded_String(S (I..S'Last)));
-         -- from beginning to end, we need to consume input until failure, and check upon failure if the last 
-         -- state before failure was accepting. If it was, we match.
-         Next_Result := Evaluate_Result(The_Machine.M_Automaton);
-         Prev_Result := Next_Result;
-         while My_Stream.Has_Next and not Next_Result.M_Is_Failed loop 
-            Prev_Result := Next_Result;
-            Next_Result := The_Machine.M_Automaton.Consume(My_Stream.Next);
-         end loop;
-         
-         -- If we succeeded, we can return True here.
-         -- Otherwise we move on to the next iteration of the loop.
-         if Next_Result.M_Is_Failed and Prev_Result.M_Is_Accepted then 
-            return True;
-         elsif Next_Result.M_Is_Accepted then 
-            return True;
-         end if;
-      end loop;
-      
       -- Run for empty input evaluation
       Reset(The_Machine.M_Automaton);
       My_Stream := Make_Stream(To_Unbounded_String(S));
-      return Evaluate_Result(The_Machine.M_Automaton).M_Is_Accepted;
+      if Evaluate_Result(The_Machine.M_Automaton).M_Is_Accepted then 
+         return True;
+      end if;
+      
+      for I in S'First .. S'Last loop 
+         Reset(The_Machine.M_Automaton);
+         My_Stream := Make_Stream(To_Unbounded_String(S (I..S'Last)));
+         
+         -- If, while consuming input, we are ever in an accepting state, then some substring
+         -- of the total input successfully matches the regex.
+         Next_Result := Evaluate_Result(The_Machine.M_Automaton);
+         while My_Stream.Has_Next and not Next_Result.M_Is_Failed loop 
+            Next_Result := The_Machine.M_Automaton.Consume(My_Stream.Next);
+            
+            if not Next_Result.M_Is_Failed and then Next_Result.M_Is_Accepted then 
+               return True;
+            end if;
+         end loop;
+      end loop;
+      
+      -- If we get here, we found no matches at all.
+      return False;
    end Test;
    
    procedure Add_Result(The_Results: in out Results; New_Result : Unbounded_String) is begin 
@@ -146,7 +145,6 @@ package body Regex is
    
    function Match(The_Machine: in out Regex; S: String) return Results is 
       My_Stream: Str_Char_Stream;
-      Prev_Result : Automaton_Result;
       Next_Result : Automaton_Result;
       My_Results : Results;
    begin 
@@ -155,12 +153,10 @@ package body Regex is
          My_Stream := Make_Stream(To_Unbounded_String(S (I..S'Last)));
          
          Next_Result := Evaluate_Result(The_Machine.M_Automaton);
-         Prev_Result := Next_Result;
          
          -- from beginning to end, we need to consume input until failure, and check upon failure if the last 
          -- state before failure was accepting. If it was, we matched.
          while My_Stream.Has_Next and not Next_Result.M_Is_Failed loop 
-            Prev_Result := Next_Result;
             Next_Result := The_Machine.M_Automaton.Consume(My_Stream.Next);
             
             if Next_Result.M_Is_Accepted and then not Next_Result.M_Is_Failed and then Length(Next_Result.M_Consumed) > 0 then 

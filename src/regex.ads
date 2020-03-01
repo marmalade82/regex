@@ -35,6 +35,8 @@ package Regex is
    
    -- Tests for nonzero length matches within @S
    function Match(The_Machine: in out Regex; S: String) return Results;
+   
+   
      
    
    
