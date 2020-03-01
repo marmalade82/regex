@@ -183,5 +183,27 @@ package body Regex is
       Ada.Strings.Unbounded.Append(My_String, ".");
       return To_String(My_String);
    end As_String;
+   
+   function To_Regex_Result(The_Result: Automaton_Result) return Regex_Result is 
+   begin 
+      return ( M_Consumed => The_Result.M_Consumed,
+               M_Is_Failed => The_Result.M_Is_Failed,
+               M_Is_Accepted => The_Result.M_Is_Accepted
+             );
+   end To_Regex_Result;
+   
+   function Consume(The_Machine: in out Regex; C: Character) return Regex_Result is 
+   begin 
+      return To_Regex_Result( Consume(The_Machine.M_Automaton, C) );
+   end Consume;
+   
+   function Evaluate(The_Machine: in out Regex) return Regex_Result is
+   begin 
+      return To_Regex_Result( Evaluate_Result(The_Machine.M_Automaton) );
+   end Evaluate;
+   
+   procedure Reset(The_Machine: in out Regex) is begin 
+      Reset(The_Machine.M_Automaton);
+   end Reset;
 
 end Regex;

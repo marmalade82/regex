@@ -36,9 +36,17 @@ package Regex is
    -- Tests for nonzero length matches within @S
    function Match(The_Machine: in out Regex; S: String) return Results;
    
+   type Regex_Result is record 
+      M_Consumed: Unbounded_String;
+      M_Is_Failed: Boolean;
+      M_Is_Accepted: Boolean;
+   end record;
    
+   function Consume(The_Machine: in out Regex; C: Character) return Regex_Result;
+   
+   function Evaluate(The_Machine: in out Regex) return Regex_Result;
+   
+   procedure Reset(The_Machine: in out Regex);
      
-   
-   
 
 end Regex;
