@@ -146,20 +146,10 @@ package body Regex is
    
    function Match(The_Machine: in out Regex; S: String) return Results is 
       My_Stream: Str_Char_Stream;
-      Initial_Result : Automaton_Result;
       Prev_Result : Automaton_Result;
       Next_Result : Automaton_Result;
       My_Results : Results;
    begin 
-      -- Run for empty input evaluation
-      Reset(The_Machine.M_Automaton);
-      My_Stream := Make_Stream(To_Unbounded_String(S));
-      Initial_Result := Evaluate_Result(The_Machine.M_Automaton);
-      
-      if Initial_Result.M_Is_Accepted then 
-         Add_Result(My_Results, Initial_Result.M_Consumed);
-      end if;
-      
       for I in S'First .. S'Last loop 
          Reset(The_Machine.M_Automaton);
          My_Stream := Make_Stream(To_Unbounded_String(S (I..S'Last)));
@@ -167,25 +157,16 @@ package body Regex is
          Next_Result := Evaluate_Result(The_Machine.M_Automaton);
          Prev_Result := Next_Result;
          
-         -- if first result matched, then we have to match.
-         if Prev_Result.M_Is_Accepted then 
-            Add_Result(My_Results, Prev_Result.M_Consumed);
-         end if;
-         
          -- from beginning to end, we need to consume input until failure, and check upon failure if the last 
          -- state before failure was accepting. If it was, we matched.
          while My_Stream.Has_Next and not Next_Result.M_Is_Failed loop 
             Prev_Result := Next_Result;
             Next_Result := The_Machine.M_Automaton.Consume(My_Stream.Next);
+            
+            if Next_Result.M_Is_Accepted and then not Next_Result.M_Is_Failed and then Length(Next_Result.M_Consumed) > 0 then 
+               Add_Result(My_Results, Next_Result.M_Consumed);
+            end if;
          end loop;
-         
-         -- If we succeeded, we can add to the results here.
-         -- Otherwise we move on to the next iteration of the loop.
-         if Next_Result.M_Is_Failed and Prev_Result.M_Is_Accepted then 
-            Add_Result(My_Results, Prev_Result.M_Consumed);
-         elsif Next_Result.M_Is_Accepted then 
-            Add_Result(My_Results, Next_Result.M_Consumed);
-         end if;
       end loop;
       
       return My_Results;
@@ -195,5 +176,16 @@ package body Regex is
       return String_Vector.Empty_Vector;
    end Empty_Results;
 
+   function As_String(The_Results: Results) return String is 
+      My_String : Unbounded_String := To_Unbounded_String("");
+      procedure Build_String(The_Position: String_Vector.Cursor) is begin 
+         Ada.Strings.Unbounded.Append(My_String, String_Vector.Element(The_Position));
+         Ada.Strings.Unbounded.Append(My_String, ",");
+      end Build_String;
+   begin 
+      String_Vector.Iterate(The_Results, Build_String'Access);
+      Ada.Strings.Unbounded.Append(My_String, ".");
+      return To_String(My_String);
+   end As_String;
 
 end Regex;

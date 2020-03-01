@@ -120,21 +120,17 @@ package body Regex_Tests is
       My_Machine: Regex.Regex;
       My_Success : Boolean;
       My_Error : Unbounded_String;
-      My_Expected: Results;
    begin
       My_Success := Compile(My_Machine, My_Input, My_Error);
       Assert(My_Success, "Does not compile");
       
-      My_Expected := Empty_Results & To_Unbounded_String("");
-      Assert( Regex.Match(My_Machine, "") = My_Expected, "Does not recognize whole input"  );
+      Assert( Is_Empty(Regex.Match(My_Machine, "")), "Does not recognize whole input"  );
       
-      My_Expected := Empty_Results & To_Unbounded_String("") & To_Unbounded_String("a");
-      Assert( Regex.Match(My_Machine, "a") = My_Expected, "Does not recognize whole input"  );
+      Assert( As_String(Regex.Match(My_Machine, "a")) = "a,.", "Does not recognize whole input, got " & As_String(Regex.Match(My_Machine, "a"))  );
       
-      My_Expected := Empty_Results & To_Unbounded_String("") & To_Unbounded_String("a") & To_Unbounded_String("aa") & To_Unbounded_String("a");
-      Assert( Regex.Match(My_Machine, "aa") = My_Expected, "Does not recognize whole input"  );
+      Assert( As_String(Regex.Match(My_Machine, "aa")) = "a,aa,a,.", "Does not recognize whole input, got " & As_String(Regex.Match(My_Machine, "aa"))  );
       
-      Assert( Is_Empty( Regex.Match(My_Machine, "b") ), "Does not recognize start state matching");
+      Assert( Is_Empty( Regex.Match(My_Machine, "b") ), "Does not recognize start state matching, got " & As_String(Regex.Match(My_Machine, "b")) );
    end Match_Wildcard;
    
    procedure Test_Letter_In_Middle(T : in out Test_Case'Class) is
@@ -161,8 +157,8 @@ package body Regex_Tests is
       My_Success := Compile(My_Machine, My_Input, My_Error);
       Assert(My_Success, "Does not compile");
       
-      Assert( Regex.Match(My_Machine, "bbabb") = My_Expected, "Does not recognize single match"  );
-      Assert( Is_Empty( Regex.Match(My_Machine, "bbbbb") ), "Does not reject incorrect input");
+      Assert( As_String(Regex.Match(My_Machine, "bbabbb")) = "a,.", "Does not recognize single match, got " & As_String(Regex.Match(My_Machine, "bbabb"))  );
+      Assert( Is_Empty( Regex.Match(My_Machine, "bbbbbb") ), "Does not reject incorrect input");
    end Match_Letter_In_Middle;
    
    procedure Register_Tests(T: in out Regex_Test) is 

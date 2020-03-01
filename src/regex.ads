@@ -5,6 +5,12 @@ with Ada.Containers.Vectors;
 package Regex is
    Cannot_Convert : exception;
    
+   type Result is record 
+      M_String: Unbounded_String;
+      Index: Positive;
+   end record;
+   
+   
    package String_Vector is new Ada.Containers.Vectors 
      (Index_Type   => Positive,
       Element_Type => Unbounded_String,
@@ -13,6 +19,8 @@ package Regex is
    subtype Results is String_Vector.Vector;
    
    function Empty_Results return Results;
+   
+   function As_String(The_Results: Results) return String;
    
    type Regex is record
       M_Automaton: D_Finite_Automaton;
@@ -25,6 +33,7 @@ package Regex is
    -- Tests whether there is any regex match within @S
    function Test(The_Machine: in out Regex; S: String) return Boolean;
    
+   -- Tests for nonzero length matches within @S
    function Match(The_Machine: in out Regex; S: String) return Results;
      
    
